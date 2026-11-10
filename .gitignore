@@ -2,3 +2,4 @@
 .claude/settings.local.json
 .codex/hooks.json
 .agents/hooks.json
+/01_참가자_배포용/

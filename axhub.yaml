@@ -1,0 +1,7 @@
+version: axhub/v1
+name: corevia-promise-plan
+metadata:
+  name: Corevia 약속계획
+build:
+  deploy_method: static
+  static_output_dir: public

@@ -1,0 +1,13 @@
+{
+  "name": "corevia-promise-plan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Corevia 약속계획 — 기존 납품 약속과 신규 입찰을 연결하는 AI 운영 시스템",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,110 +1,99 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Button } from '@astryxdesign/core/Button';
-import { Badge } from '@astryxdesign/core/Badge';
-import { Theme } from '@astryxdesign/core/theme';
-import { neutralTheme } from '@astryxdesign/theme-neutral/built';
-import '@astryxdesign/core/reset.css';
-import '@astryxdesign/core/astryx.css';
-import '@astryxdesign/theme-neutral/theme.css';
+import { createPortal } from 'react-dom';
+import { loadState } from '../public/workflow-storage.mjs';
+import { CustomerTrends, DecisionOverview, ProductionOverview, ScenarioLab } from './decision-views.jsx';
 import { SupplyOverview } from './supply-overview.jsx';
+import './workspace.css';
 
 const pages = [
-  ['dashboard', '업무 개요', 'dashboard-heading', '▤', '기존 공급 약속을 먼저 확인하고 새 입찰의 공급 여력을 검토하세요.'],
-  ['intake', '입찰 접수', 'intake-request', '▣', '요청서와 바이어 회신을 확인해 공급 조건을 정리합니다.'],
-  ['capacity', '생산계획', 'capacity', '▥', '기존 약속을 지키면서 제안할 수 있는 물량을 계산합니다.'],
-  ['review', '부서 검수', 'department-review', '✓', '같은 공급안에 대한 부서별 결정과 수정 근거를 기록합니다.'],
-  ['proposal', '승인·제출', 'proposal-workflow', '↗', '확인된 조건과 근거를 보고 입찰 참여를 결정합니다.'],
-  ['assistant', 'Gemini 어시스턴트', 'assistant-heading', '✦', '막힌 이유를 확인하고 자료 요청이나 수정 초안을 작성합니다.'],
+  ['dashboard', '종합 현황', 'dashboard-heading', '◫'],
+  ['intake', '고객·계약', 'customer-history', '▤'],
+  ['capacity', '생산계획', 'capacity', '▥'],
+  ['scenario', '시나리오 분석', 'scenario-heading', '◈'],
+  ['proposal', '검수·승인', 'proposal-workflow', '✓'],
 ];
-const aliases = { review: 'intake', result: 'intake', 'capacity-result': 'capacity', 'approval-evidence': 'proposal' };
+const aliases = { review: 'intake', result: 'intake', 'intake-request': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
+  'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal' };
 const byId = (id) => document.getElementById(id);
-const currentView = () => {
-  const hash = window.location.hash.slice(1);
-  return pages.find(([key, , anchor]) => key === hash || anchor === hash)?.[0] ?? aliases[hash] ?? 'dashboard';
-};
+const hash = () => window.location.hash.slice(1);
+const viewForHash = () => pages.find(([id, , anchor]) => id === hash() || anchor === hash())?.[0] ?? aliases[hash()] ?? 'dashboard';
 
-function useWorkspaceView() {
-  const [view, setView] = useState(currentView);
+function useWorkflow() {
+  const snapshot = () => {
+    const record = loadState('intake');
+    const department = loadState('department');
+    const plans = !byId('capacity-result').hidden && record && department?.intakeVersion === record.version
+      && !department.needsRecalculation ? department.plans ?? [] : [];
+    return {
+      record, plans, approved: !byId('proposal-document').hidden,
+      decision: loadState('proposal')?.approval?.decision,
+      next: byId('workflow-next').textContent, href: byId('workflow-next-link').getAttribute('href'),
+    };
+  };
+  const [workflow, setWorkflow] = useState(snapshot);
   useEffect(() => {
-    const update = () => setView(currentView());
+    const update = () => setWorkflow(snapshot());
+    const observer = new MutationObserver(update);
+    for (const id of ['workflow-next', 'workflow-next-link', 'workflow-steps', 'capacity-result', 'proposal-document']) {
+      observer.observe(byId(id), { childList: true, subtree: true, attributes: true });
+    }
+    window.addEventListener('storage', update);
+    update();
+    return () => { observer.disconnect(); window.removeEventListener('storage', update); };
+  }, []);
+  return workflow;
+}
+
+function Workspace() {
+  const [view, setView] = useState(viewForHash);
+  const workflow = useWorkflow();
+  const dialog = byId('assistant-panel');
+  const openAssistant = (area) => {
+    byId('assistant-context').textContent = area;
+    if (!dialog.open) dialog.showModal();
+  };
+  useEffect(() => {
+    const update = () => {
+      if (hash() === 'assistant-heading' || hash() === 'assistant') {
+        history.replaceState(null, '', `#${pages.find(([key]) => key === document.body.dataset.workspace)?.[2] ?? 'dashboard-heading'}`);
+        openAssistant(pages.find(([key]) => key === document.body.dataset.workspace)?.[1] ?? '종합 현황');
+        return;
+      }
+      const next = viewForHash();
+      if (dialog.open) dialog.close();
+      document.body.dataset.workspace = next;
+      setView(next);
+      const target = Object.hasOwn(aliases, hash()) ? byId(hash()) : null;
+      if (target?.closest('#capacity-entry')) byId('capacity-entry').open = true;
+      if (hash() === 'workflow-history') target.closest('details').open = true;
+      requestAnimationFrame(() => target && !target.closest('[hidden]')
+        ? target.scrollIntoView({ block: 'start' }) : window.scrollTo(0, 0));
+    };
+    update();
     window.addEventListener('hashchange', update);
     return () => window.removeEventListener('hashchange', update);
   }, []);
-  return view;
-}
-
-function useWorkflowSummary() {
-  const snapshot = () => {
-    const steps = [...byId('workflow-steps').children].map((item) => item.textContent);
-    const tasks = byId('result').hidden ? null : [...byId('tasks').children].filter((item) => item.querySelector('details')).length;
-    return { steps, tasks, next: byId('workflow-next-link').getAttribute('href') };
-  };
-  const [summary, setSummary] = useState(snapshot);
-  useEffect(() => {
-    const observer = new MutationObserver(() => setSummary(snapshot()));
-    for (const id of ['workflow-steps', 'workflow-next-link', 'tasks', 'result']) {
-      observer.observe(byId(id), { childList: true, subtree: true, attributes: true });
-    }
-    setSummary(snapshot());
-    return () => observer.disconnect();
-  }, []);
-  return summary;
-}
-
-function Navigation() {
-  const view = useWorkspaceView();
+  const [, title] = pages.find(([key]) => key === view);
   return <>
-    <a className="workspace-brand" href="#dashboard-heading">
-      <span className="brand-mark" aria-hidden="true">C</span>
-      <span><strong>Corevia</strong><small>약속계획</small></span>
-    </a>
-    <nav aria-label="주 메뉴">
-      {pages.map(([key, title, anchor, icon]) =>
-        <a key={key} href={`#${anchor}`} aria-current={key === view ? 'page' : undefined}>
-          <span className="nav-icon" aria-hidden="true">{icon}</span>{title}
-        </a>)}
-    </nav>
+    {portal('workspace-nav', <>
+      <a className="workspace-brand" href="#dashboard-heading"><span className="brand-mark" aria-hidden="true">C</span><span><strong>Corevia</strong><small>약속계획</small></span></a>
+      <nav aria-label="주 메뉴">
+        {pages.map(([key, label, anchor, icon]) => <a key={key} href={`#${anchor}`} aria-current={view === key ? 'page' : undefined}>
+          <span className="nav-icon" aria-hidden="true">{icon}</span>{label}</a>)}
+      </nav>
+    </>)}
+    {portal('workspace-header', <div className="context-bar">
+      <div><strong>{title}</strong><span>W05 · 시연 환경</span></div>
+      <button type="button" className="secondary" onClick={() => openAssistant(title)}>✦ 업무 어시스턴트</button>
+    </div>)}
+    {portal('decision-overview', <DecisionOverview {...workflow} />)}
+    {portal('supply-overview', <SupplyOverview />)}
+    {portal('customer-trends', <CustomerTrends />)}
+    {portal('production-overview', <ProductionOverview plans={workflow.plans} />)}
+    {portal('scenario-view', <ScenarioLab />)}
   </>;
 }
 
-function Header() {
-  const view = useWorkspaceView();
-  const [, title, , , description] = pages.find(([key]) => key === view);
-  useEffect(() => {
-    document.body.dataset.workspace = view;
-    if (window.location.hash) {
-      const hash = window.location.hash.slice(1);
-      const target = Object.hasOwn(aliases, hash) ? byId(hash) : null;
-      if (target && !target.closest('[hidden]')) target.scrollIntoView({ block: 'start' });
-      else window.scrollTo(0, 0);
-    }
-  }, [view]);
-  return <div className="page-header">
-    <div>
-      <Badge label="W05 · 입찰 검토" variant="neutral" />
-      <h1>{title}</h1>
-      <p>{description}</p>
-    </div>
-    {view !== 'assistant' && <Button label="Gemini에게 물어보기" variant="secondary" href="#assistant-heading" />}
-  </div>;
-}
-
-function Metrics() {
-  const { steps, tasks } = useWorkflowSummary();
-  const details = (index, fallback) => steps[index]?.split(' · ').slice(1).join(' · ') || fallback;
-  return <div className="metric-grid">
-    {[
-      ['접수 검수', details(0, '대기'), '입찰 조건'],
-      ['미해결 작업', tasks === null ? '—' : `${tasks}건`, '회신 확인'],
-      ['공급안', details(1, '계산 대기'), '생산계획'],
-      ['부서 검수', details(2, '0/3 수락'), '승인 전 검수'],
-    ].map(([label, value, description]) => <div className="metric" key={label}>
-      <span>{label}</span><strong>{value}</strong><small>{description}</small>
-    </div>)}
-  </div>;
-}
-
-for (const [id, Component] of [['workspace-nav', Navigation], ['workspace-header', Header], ['workspace-metrics', Metrics], ['supply-overview', SupplyOverview]]) {
-  createRoot(byId(id)).render(<Theme theme={neutralTheme}><Component /></Theme>);
-}
+const portal = (id, content) => createPortal(content, byId(id));
+createRoot(byId('workspace-root')).render(<Workspace />);

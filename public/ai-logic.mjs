@@ -13,7 +13,8 @@ export function selectAction(message, context) {
   const module = /승인|제출|제안서/.test(message) ? 'proposal'
     : /부서|반려|검수/.test(message) ? 'review'
       : /생산|가용량|계산/.test(message) ? 'capacity'
-        : /접수|RFP/i.test(message) ? 'intake' : 'dashboard';
+        : /접수|RFP/i.test(message) ? 'intake'
+          : ['dashboard', 'intake', 'capacity', 'review', 'proposal'].includes(context.activeModule) ? context.activeModule : 'dashboard';
   if (/(?:수정|변경|정정|초안)/.test(message) && Array.isArray(context.rows)) {
     const candidates = context.rows.slice(0, 40).flatMap((row, index) => {
       const product = typeof row?.line === 'string' ? row.line.match(/\bPL-\d{2}\b/)?.[0] : null;

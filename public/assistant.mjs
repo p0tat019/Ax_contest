@@ -16,7 +16,7 @@ function visible(element) {
 
 function context() {
   const screen = Object.fromEntries(Object.entries(modules).map(([id, module]) => [
-    id, module.context.map(byId).filter(visible).map((element) => element.innerText.trim().slice(0, 1100)).filter(Boolean),
+    id, module.context.map(byId).filter(visible).map((element) => element.textContent.trim().slice(0, 1100)).filter(Boolean),
   ]));
   const rows = visible(byId('capacity-form')) ? [...byId('capacity-rows').rows].map((row, index) => {
     const field = (name) => row.querySelector(`[name="${name}"]`);
@@ -27,7 +27,7 @@ function context() {
       ])),
     };
   }).slice(0, 40) : [];
-  return { screen, rows };
+  return { screen, rows, activeModule: document.body.dataset.workspace };
 }
 
 function renderRequests() {
@@ -47,6 +47,15 @@ function renderRequests() {
 
 function showAction(result, snapshot) {
   answer.textContent = result.answer;
+  const grounding = byId('assistant-grounding');
+  const excerpt = {
+    capacity: visible(byId('capacity-result')) ? byId('capacity-summary').textContent : '',
+    proposal: byId('proposal-status').textContent,
+    intake: visible(byId('result')) ? byId('review-summary').textContent : '',
+    dashboard: byId('workflow-next').textContent,
+  }[snapshot.activeModule];
+  grounding.hidden = !excerpt;
+  grounding.textContent = excerpt ? `현재 화면의 근거 · ${excerpt}` : '';
   draft.hidden = true;
   actionButton.hidden = true;
   pending = { ...result, snapshot };
@@ -72,6 +81,7 @@ form.addEventListener('submit', async (event) => {
   const button = form.querySelector('button');
   if (button.disabled) return;
   pending = null;
+  byId('assistant-grounding').hidden = true;
   button.disabled = actionButton.hidden = draft.hidden = true;
   answer.textContent = '현재 업무 상태를 확인하고 있습니다.';
   const snapshot = context();
@@ -104,6 +114,7 @@ actionButton.addEventListener('click', () => {
       return;
     }
     window.location.hash = target.id;
+    byId('assistant-panel').close();
   } else if (pending.skill === 'draft_edit') {
     if (JSON.stringify(context()) !== JSON.stringify(pending.snapshot)) {
       answer.textContent = '업무 상태가 바뀌었습니다. 현재 상태에서 수정 초안을 다시 요청하세요.';
@@ -112,13 +123,15 @@ actionButton.addEventListener('click', () => {
     const target = pending.module === 'capacity'
       ? byId('capacity-rows').rows[pending.row]?.querySelector(`[name="${pending.field}"]`)
       : byId(pending.field);
-    if (!visible(target) || target.disabled) {
+    if (!visible(target) || target.disabled || target.readOnly) {
       answer.textContent = '이 입력란은 해당 업무 단계에서 열립니다.';
       return;
     }
     target.value = pending.value;
     target.dispatchEvent(new Event('input', { bubbles: true }));
     window.location.hash = modules[pending.module].anchor;
+    if (pending.module === 'capacity') byId('capacity-entry').open = true;
+    byId('assistant-panel').close();
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => target.focus()));
     answer.textContent = '입력란에 초안을 넣었습니다. 값을 확인한 뒤 해당 화면에서 다음 단계를 진행하세요.';
   }

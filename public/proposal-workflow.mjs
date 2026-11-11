@@ -135,8 +135,9 @@ function render() {
             : approval?.decision === 'declined' ? '입찰 참여 보류 결정이 기록됐습니다.'
               : blocked || 'CEO·이사회 · 검수된 공급안의 입찰 참여를 결정하세요.';
   renderList('workflow-history', history.length ? history : ['기록된 작업이 없습니다.']);
-  byId('workflow-next-link').href = !intake || (intake.decision && intake.decision !== 'accepted') ? '#intake-request'
-    : !review || issues.length || review.needsRecalculation || review.plans.some(({ revised }) => revised.existingShortage > 0) ? '#capacity'
+  byId('workflow-next-link').href = !intake || (intake.decision && intake.decision !== 'accepted')
+    || (issues.length && !intake.conditions.deliverySchedule) ? '#intake-request'
+    : !review || issues.length || review.needsRecalculation || review.plans.some(({ revised }) => revised.existingShortage > 0) ? '#capacity-entry'
       : blocked ? '#department-review' : '#proposal-workflow';
 }
 

@@ -7,6 +7,68 @@
     "sources": [
       "sales/sales_orders_cv.csv",
       "sales/sales_shipments_cv.csv"
+    ],
+    "monthly": [
+      {
+        "month": "2025-07",
+        "orders": 1345931,
+        "shipments": 1416093
+      },
+      {
+        "month": "2025-08",
+        "orders": 1269531,
+        "shipments": 1153018
+      },
+      {
+        "month": "2025-09",
+        "orders": 1468539,
+        "shipments": 1395447
+      },
+      {
+        "month": "2025-10",
+        "orders": 1406869,
+        "shipments": 1299395
+      },
+      {
+        "month": "2025-11",
+        "orders": 1211120,
+        "shipments": 1329047
+      },
+      {
+        "month": "2025-12",
+        "orders": 1570570,
+        "shipments": 1509478
+      },
+      {
+        "month": "2026-01",
+        "orders": 1450556,
+        "shipments": 1291815
+      },
+      {
+        "month": "2026-02",
+        "orders": 1284378,
+        "shipments": 1361380
+      },
+      {
+        "month": "2026-03",
+        "orders": 1556088,
+        "shipments": 1431418
+      },
+      {
+        "month": "2026-04",
+        "orders": 1132334,
+        "shipments": 1426756
+      },
+      {
+        "month": "2026-05",
+        "orders": 1025248,
+        "shipments": 1460699
+      },
+      {
+        "month": "2026-06",
+        "orders": 831441,
+        "shipments": 1217113
+      }
     ]
   },
   "lines": [

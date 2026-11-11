@@ -4,18 +4,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
-    <link rel="stylesheet" href="./workspace.css">
     <link rel="stylesheet" href="./intake.css">
+    <link rel="stylesheet" href="./workspace.css">
     <script type="module" src="./workspace.js"></script>
     <script type="module" src="./intake.mjs"></script>
     <script type="module" src="./assistant.mjs"></script>
   </head>
   <body data-workspace="dashboard">
+    <div id="workspace-root"></div>
     <aside id="workspace-nav" aria-label="업무 메뉴"></aside>
     <main>
       <header id="workspace-header"></header>
-      <section data-view="assistant" aria-labelledby="assistant-heading">
-        <h2 id="assistant-heading">Gemini 업무 어시스턴트</h2>
+      <dialog id="assistant-panel" aria-labelledby="assistant-heading">
+        <div class="section-heading"><div><p class="eyebrow" id="assistant-context"></p><h2 id="assistant-heading">업무 어시스턴트</h2></div>
+          <form method="dialog"><button class="secondary" aria-label="어시스턴트 닫기">닫기</button></form></div>
         <p>질문과 실제 업무 값은 로컬에서 처리합니다. Gemini에는 정해진 업무 상태 코드만 전달됩니다.</p>
         <form id="assistant-form">
           <label for="assistant-question">업무 질문 또는 요청</label>
@@ -23,33 +25,27 @@
           <button type="submit">Gemini에게 요청</button>
         </form>
         <p id="assistant-answer" role="status"></p>
+        <p id="assistant-grounding" class="analysis-panel" hidden></p>
         <pre id="assistant-draft" hidden></pre>
         <button type="button" class="secondary" id="assistant-action" hidden></button>
         <h3>자료 확인 요청</h3>
         <ul id="assistant-requests"></ul>
-      </section>
-      <section data-view="dashboard" aria-labelledby="dashboard-heading">
-        <h2 id="dashboard-heading">입찰·공급 대시보드</h2>
-        <div id="supply-overview"></div>
-      </section>
-      <section data-view="dashboard" aria-labelledby="active-workflow-heading">
-        <h2 id="active-workflow-heading">현재 저장된 입찰 진행 현황</h2>
-        <div id="workspace-metrics"></div>
-        <div class="dashboard-grid">
-          <div class="next-work">
-            <h3>다음 작업</h3>
-            <p id="workflow-next" role="status"></p>
-            <a id="workflow-next-link" href="#intake-request">다음 작업 화면 열기 <span aria-hidden="true">→</span></a>
-          </div>
-          <div class="workflow-panel">
-            <h3>단계별 상태</h3>
-            <ol id="workflow-steps"></ol>
-          </div>
-        </div>
-        <details class="history-panel" open>
-          <summary>처리 이력</summary>
-          <ol id="workflow-history"></ol>
+      </dialog>
+      <section id="dashboard-heading" data-view="dashboard" class="decision-page" aria-label="종합 현황">
+        <div id="decision-overview"></div>
+        <details class="disclosure-panel">
+          <summary>입찰 대기열과 주간 공급 근거</summary>
+          <div id="supply-overview"></div>
         </details>
+        <details class="disclosure-panel">
+          <summary>업무 진행 상태</summary>
+          <ol id="workflow-steps"></ol>
+          <p id="workflow-next" role="status"></p>
+          <a id="workflow-next-link" href="#intake-request">다음 작업 열기</a>
+        </details>
+      </section>
+      <section id="customer-history" data-view="intake" class="decision-page" aria-label="고객 자료">
+        <div id="customer-trends"></div>
       </section>
       <section id="intake-request" data-view="intake">
         <div class="section-heading">
@@ -124,7 +120,9 @@
         </details>
       </section>
       <section id="capacity" data-view="capacity">
-        <h2>주간 납품과 생산능력</h2>
+        <div id="production-overview"></div>
+        <details id="capacity-entry" class="disclosure-panel">
+        <summary>검수용 공급안 입력·계산</summary>
         <p id="capacity-intake">모듈 1의 검수 수락을 저장하면 계산을 시작할 수 있습니다.</p>
         <form id="capacity-form" hidden>
           <p>생산관리와 영업의 주간 회신을 입력하세요. 기존 약속에는 해당 라인에 배정된 모든 기존 고객의 확정 물량을 합산합니다.</p>
@@ -161,46 +159,15 @@
             </table>
           </div>
         </div>
+        </details>
       </section>
-      <section id="department-review" data-view="review">
-        <h2>부서 검수와 피드백</h2>
-        <p id="department-empty">생산계획을 계산하면 부서 검수가 열립니다.</p>
-        <div id="department-review-content" hidden>
-        <p id="department-status" role="status"></p>
-        <ul id="department-decisions"></ul>
-        <form id="department-form">
-          <div class="fields">
-            <div>
-              <label for="department-role">부서</label>
-              <select id="department-role"><option>영업</option><option>생산관리</option><option>재무·전략</option></select>
-            </div>
-            <label>담당자 <input id="department-person" required></label>
-            <div>
-              <label for="department-decision">결정</label>
-              <select id="department-decision" required>
-                <option value="">선택하세요</option><option value="accepted">수락</option><option value="conditional">조건부 수락</option><option value="revise">보완 요청</option><option value="rejected">반려</option>
-              </select>
-            </div>
-          </div>
-          <label for="department-feedback">회신 내용</label>
-          <textarea id="department-feedback" rows="3" placeholder="조건부 수락, 보완 요청, 반려 시 근거와 변경 요청을 입력하세요."></textarea>
-          <button type="submit">부서 결정 저장</button>
-          <p id="department-notice" role="status"></p>
-        </form>
-        <p id="department-next"></p>
-        <label for="feedback-row">피드백 대상 주차·품목</label>
-        <select id="feedback-row"></select>
-        <button type="button" class="secondary" id="department-edit">선택한 계산 행 열기</button>
-        <button type="button" class="secondary" id="feedback-analyze">Gemini로 회신 분석</button>
-        <p id="feedback-status" role="status"></p>
-        <button type="button" id="feedback-apply" hidden>변경 후보 적용 및 재계산</button>
-        <h3>재무 검수 참고값</h3>
-        <p id="finance-comparison"></p>
-        </div>
+      <section data-view="scenario" class="decision-page" aria-label="시나리오 분석">
+        <div id="scenario-view"></div>
       </section>
       <section id="proposal-workflow" data-view="proposal">
         <h2>승인과 모의 제출</h2>
         <p id="proposal-status" role="status"></p>
+        <a class="text-link" href="#department-review">부서 검수와 의견 확인 ↓</a>
         <ul id="proposal-issues" hidden></ul>
         <details id="approval-evidence">
           <summary>입찰 조건과 바이어 회신 근거</summary>
@@ -238,6 +205,46 @@
           <textarea id="reply-content" rows="3" required></textarea>
           <button type="submit">바이어 회신 기록</button>
         </form>
+        <details class="history-panel">
+          <summary>처리 이력</summary>
+          <ol id="workflow-history"></ol>
+        </details>
+      </section>
+      <section id="department-review" data-view="proposal">
+        <h2>부서 검수와 피드백</h2>
+        <p id="department-empty">생산계획을 계산하면 부서 검수가 열립니다.</p>
+        <div id="department-review-content" hidden>
+        <p id="department-status" role="status"></p>
+        <ul id="department-decisions"></ul>
+        <form id="department-form">
+          <div class="fields">
+            <div>
+              <label for="department-role">부서</label>
+              <select id="department-role"><option>영업</option><option>생산관리</option><option>재무·전략</option></select>
+            </div>
+            <label>담당자 <input id="department-person" required></label>
+            <div>
+              <label for="department-decision">결정</label>
+              <select id="department-decision" required>
+                <option value="">선택하세요</option><option value="accepted">수락</option><option value="conditional">조건부 수락</option><option value="revise">보완 요청</option><option value="rejected">반려</option>
+              </select>
+            </div>
+          </div>
+          <label for="department-feedback">회신 내용</label>
+          <textarea id="department-feedback" rows="3" placeholder="조건부 수락, 보완 요청, 반려 시 근거와 변경 요청을 입력하세요."></textarea>
+          <button type="submit">부서 결정 저장</button>
+          <p id="department-notice" role="status"></p>
+        </form>
+        <p id="department-next"></p>
+        <label for="feedback-row">피드백 대상 주차·품목</label>
+        <select id="feedback-row"></select>
+        <button type="button" class="secondary" id="department-edit">선택한 계산 행 열기</button>
+        <button type="button" class="secondary" id="feedback-analyze">Gemini로 회신 분석</button>
+        <p id="feedback-status" role="status"></p>
+        <button type="button" id="feedback-apply" hidden>변경 후보 적용 및 재계산</button>
+        <h3>재무 검수 참고값</h3>
+        <p id="finance-comparison"></p>
+        </div>
       </section>
     </main>
   </body>

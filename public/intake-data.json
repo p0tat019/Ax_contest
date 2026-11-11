@@ -1,0 +1,62 @@
+{
+  "asOf": "2026-07-01",
+  "existingCustomer": {
+    "customer": "C-101",
+    "unlinkedOrders": 421,
+    "orderQuantity": 1916340,
+    "sources": [
+      "sales/sales_orders_cv.csv",
+      "sales/sales_shipments_cv.csv"
+    ]
+  },
+  "lines": [
+    {
+      "product": "PL-01",
+      "plant": "F1",
+      "line": "L-01",
+      "utilization": 85,
+      "date": "2026-06-30",
+      "source": "production/strat_capacity_cv.csv"
+    },
+    {
+      "product": "PL-02",
+      "plant": "F1",
+      "line": "L-02",
+      "utilization": 97,
+      "date": "2026-06-30",
+      "source": "production/strat_capacity_cv.csv"
+    },
+    {
+      "product": "PL-04",
+      "plant": "F1",
+      "line": "L-03",
+      "utilization": 80,
+      "date": "2026-06-30",
+      "source": "production/strat_capacity_cv.csv"
+    },
+    {
+      "product": "PL-03",
+      "plant": "F2",
+      "line": "L-11",
+      "utilization": 72,
+      "date": "2026-06-30",
+      "source": "production/strat_capacity_cv.csv"
+    },
+    {
+      "product": "PL-05",
+      "plant": "F2",
+      "line": "L-12",
+      "utilization": 75,
+      "date": "2026-06-30",
+      "source": "production/strat_capacity_cv.csv"
+    },
+    {
+      "product": "PL-06",
+      "plant": "F2",
+      "line": "L-13",
+      "utilization": 74,
+      "date": "2026-06-30",
+      "source": "production/strat_capacity_cv.csv"
+    }
+  ]
+}

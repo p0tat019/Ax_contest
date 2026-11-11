@@ -5,3 +5,5 @@ metadata:
 build:
   deploy_method: static
   static_output_dir: public
+  install: npm ci
+  build: npm run build

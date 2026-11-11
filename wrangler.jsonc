@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "corevia-promise-plan-api",
+  "main": "worker/corevia-ai.mjs",
+  "compatibility_date": "2026-11-10",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "vars": {
+    "FRONTEND_ORIGINS": "https://corevia-1p74.axhub.page",
+    "GEMINI_MODEL": "gemini-3.1-flash-lite"
+  },
+  "ratelimits": [
+    { "name": "CLIENT_LIMIT", "namespace_id": "1001", "simple": { "limit": 12, "period": 60 } },
+    { "name": "SHARED_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
+  ]
+}

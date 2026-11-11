@@ -4,13 +4,241 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
+    <link rel="stylesheet" href="./workspace.css">
+    <link rel="stylesheet" href="./intake.css">
+    <script type="module" src="./workspace.js"></script>
+    <script type="module" src="./intake.mjs"></script>
+    <script type="module" src="./assistant.mjs"></script>
   </head>
-  <body>
+  <body data-workspace="dashboard">
+    <aside id="workspace-nav" aria-label="업무 메뉴"></aside>
     <main>
-      <h1>Corevia 약속계획</h1>
-      <p>기존 납품 약속과 신규 입찰을 연결하는 AI 운영 시스템</p>
-      <p>W05 · 대형 수주와 기존 고객 약속</p>
-      <p>초기 환경 설정 완료 · 업무 기능 설계 중</p>
+      <header id="workspace-header"></header>
+      <section data-view="assistant" aria-labelledby="assistant-heading">
+        <h2 id="assistant-heading">Gemini 업무 어시스턴트</h2>
+        <p>질문과 실제 업무 값은 로컬에서 처리합니다. Gemini에는 정해진 업무 상태 코드만 전달됩니다.</p>
+        <form id="assistant-form">
+          <label for="assistant-question">업무 질문 또는 요청</label>
+          <textarea id="assistant-question" rows="3" maxlength="2000" required placeholder="지금 입찰이 왜 막혔어? 초도 납품일 확인 요청을 작성해 줘."></textarea>
+          <button type="submit">Gemini에게 요청</button>
+        </form>
+        <p id="assistant-answer" role="status"></p>
+        <pre id="assistant-draft" hidden></pre>
+        <button type="button" class="secondary" id="assistant-action" hidden></button>
+        <h3>자료 확인 요청</h3>
+        <ul id="assistant-requests"></ul>
+      </section>
+      <section data-view="dashboard" aria-labelledby="dashboard-heading">
+        <h2 id="dashboard-heading">입찰·공급 대시보드</h2>
+        <div id="supply-overview"></div>
+      </section>
+      <section data-view="dashboard" aria-labelledby="active-workflow-heading">
+        <h2 id="active-workflow-heading">현재 저장된 입찰 진행 현황</h2>
+        <div id="workspace-metrics"></div>
+        <div class="dashboard-grid">
+          <div class="next-work">
+            <h3>다음 작업</h3>
+            <p id="workflow-next" role="status"></p>
+            <a id="workflow-next-link" href="#intake-request">다음 작업 화면 열기 <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="workflow-panel">
+            <h3>단계별 상태</h3>
+            <ol id="workflow-steps"></ol>
+          </div>
+        </div>
+        <details class="history-panel" open>
+          <summary>처리 이력</summary>
+          <ol id="workflow-history"></ol>
+        </details>
+      </section>
+      <section id="intake-request" data-view="intake">
+        <div class="section-heading">
+          <h2>입찰 요청</h2>
+          <button type="button" id="example" class="secondary">C-201 예시 불러오기</button>
+        </div>
+        <div id="intake-screening" class="next-work" hidden>
+          <strong>대시보드에서 넘긴 1차 판단</strong>
+          <div id="intake-screening-summary"></div>
+          <small>모의 주간 비교입니다. 실제 납기·수량과 공급·출고 근거는 상세 검수에서 확인하세요.</small>
+        </div>
+        <label for="request">RFP 원문 또는 요청 요약</label>
+        <textarea id="request" rows="7" placeholder="고객, 품목, 물량, 일정과 계약 조건을 붙여 넣으세요."></textarea>
+        <button type="button" id="extract">조건 추출 및 자동 검수</button>
+        <p id="notice" role="status"></p>
+      </section>
+      <section id="review" data-view="intake" hidden>
+        <h2>영업 담당자 검수</h2>
+        <div class="review-instruction">
+          <strong>지금 할 일</strong>
+          <p id="review-action-summary"></p>
+          <button type="button" class="secondary" id="review-next-field">확인 필요한 첫 항목 열기</button>
+          <a href="#reviewer">검수 결정 입력으로 이동</a>
+        </div>
+        <div class="review-summary-grid">
+          <div class="metric"><span>입력된 공급 조건</span><strong id="review-field-count">—</strong><small>요청서 추출 및 담당자 입력</small></div>
+          <div class="metric"><span>내부 조회 근거</span><strong id="review-evidence-count">—</strong><small>생산라인과 출하 대사</small></div>
+          <div class="metric"><span>추가 확인 작업</span><strong id="review-task-count">—</strong><small>담당 부서 확인 필요</small></div>
+        </div>
+        <div class="review-panels">
+          <div class="review-panel">
+            <h3>내부 자료에서 찾은 근거</h3>
+            <p id="lookup-status" role="status"></p>
+            <ul id="evidence" class="review-list"></ul>
+          </div>
+          <div class="review-panel">
+            <h3>담당자가 확인할 작업</h3>
+            <ul id="draft-tasks" class="review-list"></ul>
+          </div>
+        </div>
+        <form id="review-form">
+          <h3>공급 조건 확인 및 수정</h3>
+          <div id="fields" class="fields"></div>
+          <div class="review-decision">
+          <h3>영업 검수 결정</h3>
+          <div class="decision-label"><label for="reviewer">검수 담당자</label><span class="required-tag">필수 입력</span></div>
+          <input id="reviewer" required placeholder="이름 또는 역할">
+          <div class="decision-label"><label for="decision">검수 결정</label><span class="required-tag">필수 선택</span></div>
+          <select id="decision" required>
+            <option value="">결정을 선택하세요</option>
+            <option value="accepted">검수 수락</option>
+            <option value="needs-information">보완 요청</option>
+            <option value="rejected">반려</option>
+          </select>
+          <div class="decision-label"><label for="reason">결정 사유</label><span class="required-tag" id="review-reason-required" hidden>필수 입력</span></div>
+          <input id="reason" placeholder="보완 요청 또는 반려 시 입력">
+          <button type="submit">검수 결과 저장</button>
+          <p id="save-notice" role="status"></p>
+          </div>
+        </form>
+      </section>
+      <section id="result" data-view="intake" hidden>
+        <h2>저장된 검수 결과</h2>
+        <p id="review-summary"></p>
+        <h3 id="saved-conditions-heading">확인된 공급 조건</h3>
+        <dl id="conditions"></dl>
+        <h3>미해결 확인 작업</h3>
+        <ul id="tasks"></ul>
+        <details id="buyer-updates" hidden>
+          <summary>확인된 조건을 새 회신으로 변경</summary>
+          <ul id="buyer-updates-list"></ul>
+        </details>
+      </section>
+      <section id="capacity" data-view="capacity">
+        <h2>주간 납품과 생산능력</h2>
+        <p id="capacity-intake">모듈 1의 검수 수락을 저장하면 계산을 시작할 수 있습니다.</p>
+        <form id="capacity-form" hidden>
+          <p>생산관리와 영업의 주간 회신을 입력하세요. 기존 약속에는 해당 라인에 배정된 모든 기존 고객의 확정 물량을 합산합니다.</p>
+          <p id="capacity-supply-context" hidden></p>
+          <button type="button" id="capacity-confirmed" class="secondary" hidden>확정 납품표와 대시보드 근거 불러오기</button>
+          <button type="button" class="secondary" id="capacity-example">C-201 4주 모의 회신 불러오기</button>
+          <details id="capacity-scenarios" hidden>
+            <summary>검증 시나리오 불러오기</summary>
+            <label for="capacity-scenario">시나리오</label>
+            <select id="capacity-scenario"></select>
+            <p id="capacity-scenario-description"></p>
+            <button type="button" class="secondary" id="capacity-load-scenario">선택한 모의 데이터로 바꾸기</button>
+          </details>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>생산 주 시작일</th><th>납품 예정일</th><th>제품과 라인</th><th>실효능력</th><th>기존 약속</th><th>신규 요청</th><th>추가 확정 주문</th><th>가용량 감소</th><th>회신 근거</th><th>삭제</th></tr></thead>
+              <tbody id="capacity-rows"></tbody>
+            </table>
+          </div>
+          <button type="button" class="secondary" id="capacity-add">주간 행 추가</button>
+          <label for="capacity-shipping">납품 주간 물류 회신 · 경로별 출고 한도와 기존 예약 (EA)</label>
+          <textarea id="capacity-shipping" rows="3" placeholder="2026-07-27 | 56000 | 40000 | 수출 물류 회신 번호"></textarea>
+          <p>한 주에 한 줄씩, 월요일 | 처리 한도 | 예약 물량 | 회신 근거를 기록하세요. 같은 주의 품목은 출고 여력을 함께 사용합니다.</p>
+          <button type="submit">공급 가능량 계산</button>
+          <p id="capacity-status" role="status"></p>
+        </form>
+        <div id="capacity-result" hidden>
+          <h3>기준안과 변경안 비교</h3>
+          <p id="capacity-summary" role="status"></p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>생산 주 시작일</th><th>납품 예정일</th><th>제품과 라인</th><th>기준 제안</th><th>변경 제안</th><th>기준 기존 부족</th><th>변경 기존 부족</th><th>신규 요청 미충족</th><th>계산 근거</th></tr></thead>
+              <tbody id="capacity-comparison"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section id="department-review" data-view="review">
+        <h2>부서 검수와 피드백</h2>
+        <p id="department-empty">생산계획을 계산하면 부서 검수가 열립니다.</p>
+        <div id="department-review-content" hidden>
+        <p id="department-status" role="status"></p>
+        <ul id="department-decisions"></ul>
+        <form id="department-form">
+          <div class="fields">
+            <div>
+              <label for="department-role">부서</label>
+              <select id="department-role"><option>영업</option><option>생산관리</option><option>재무·전략</option></select>
+            </div>
+            <label>담당자 <input id="department-person" required></label>
+            <div>
+              <label for="department-decision">결정</label>
+              <select id="department-decision" required>
+                <option value="">선택하세요</option><option value="accepted">수락</option><option value="conditional">조건부 수락</option><option value="revise">보완 요청</option><option value="rejected">반려</option>
+              </select>
+            </div>
+          </div>
+          <label for="department-feedback">회신 내용</label>
+          <textarea id="department-feedback" rows="3" placeholder="조건부 수락, 보완 요청, 반려 시 근거와 변경 요청을 입력하세요."></textarea>
+          <button type="submit">부서 결정 저장</button>
+          <p id="department-notice" role="status"></p>
+        </form>
+        <p id="department-next"></p>
+        <label for="feedback-row">피드백 대상 주차·품목</label>
+        <select id="feedback-row"></select>
+        <button type="button" class="secondary" id="department-edit">선택한 계산 행 열기</button>
+        <button type="button" class="secondary" id="feedback-analyze">Gemini로 회신 분석</button>
+        <p id="feedback-status" role="status"></p>
+        <button type="button" id="feedback-apply" hidden>변경 후보 적용 및 재계산</button>
+        <h3>재무 검수 참고값</h3>
+        <p id="finance-comparison"></p>
+        </div>
+      </section>
+      <section id="proposal-workflow" data-view="proposal">
+        <h2>승인과 모의 제출</h2>
+        <p id="proposal-status" role="status"></p>
+        <ul id="proposal-issues" hidden></ul>
+        <details id="approval-evidence">
+          <summary>입찰 조건과 바이어 회신 근거</summary>
+          <dl id="approval-evidence-list"></dl>
+        </details>
+        <form id="approval-form" hidden>
+          <label for="approver">CEO·이사회 승인 담당자</label>
+          <input id="approver" required>
+          <label for="approval-decision">입찰 결정</label>
+          <select id="approval-decision" required>
+            <option value="">선택하세요</option><option value="approved">참여 승인</option><option value="returned">보완 요청</option><option value="declined">참여 보류</option>
+          </select>
+          <label for="approval-reason">승인 조건 또는 결정 사유</label>
+          <textarea id="approval-reason" rows="3" required></textarea>
+          <label for="conditional-scope">미확인 조건을 포함한 제안 허용 근거와 범위</label>
+          <textarea id="conditional-scope" rows="2"></textarea>
+          <button type="submit">입찰 결정 기록</button>
+        </form>
+        <p id="proposal-notice" role="status"></p>
+        <div id="proposal-document" hidden>
+          <h3>승인된 제안서</h3>
+          <pre id="proposal-content"></pre>
+          <button type="button" id="proposal-submit">모의 제출</button>
+        </div>
+        <form id="buyer-reply-form" hidden>
+          <label for="reply-owner">회신 담당자</label>
+          <input id="reply-owner" required>
+          <label for="reply-date">다음 확인 기한</label>
+          <input id="reply-date" type="date" required>
+          <label for="reply-type">바이어 회신 유형</label>
+          <select id="reply-type" required>
+            <option value="">선택하세요</option><option value="received">접수 확인</option><option value="change">조건 변경 요청</option>
+          </select>
+          <label for="reply-content">모의 회신 내용</label>
+          <textarea id="reply-content" rows="3" required></textarea>
+          <button type="submit">바이어 회신 기록</button>
+        </form>
+      </section>
     </main>
   </body>
 </html>

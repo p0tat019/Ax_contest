@@ -2,10 +2,9 @@ import { example, extractConditions, fields, pendingTasks } from './intake-rules
 import { lookupEvidence } from './intake-lookup.mjs';
 import { setCapacityIntake } from './capacity.mjs';
 import { setWorkflowIntake } from './proposal-workflow.mjs';
-import { loadState, saveState } from './workflow-storage.mjs';
+import { experienceMode, loadState, saveState } from './workflow-storage.mjs';
 
 const byId = (id) => document.getElementById(id);
-const storageKey = 'corevia.intake.v1';
 const request = byId('request');
 const review = byId('review');
 const decision = byId('decision');
@@ -283,7 +282,7 @@ function showResult(record) {
             } },
           };
           try {
-            localStorage.setItem(storageKey, JSON.stringify(updated));
+            if (!saveState('intake', updated)) throw new Error();
           } catch {
             status.textContent = '회신을 저장하지 못했습니다.';
             return;
@@ -307,7 +306,7 @@ function showResult(record) {
 
 let saved;
 try {
-  saved = JSON.parse(localStorage.getItem(storageKey));
+  saved = loadState('intake');
   if (saved?.conditions && typeof saved.source === 'string') {
     request.value = saved.source;
     supplyContext = saved.supplyContext;
@@ -345,7 +344,7 @@ byId('example').addEventListener('click', () => {
   extractDraft();
 });
 byId('extract').addEventListener('click', extractDraft);
-document.addEventListener('corevia:open-bid', ({ detail: { source, summary, context } }) => {
+document.addEventListener('corevia:open-bid', ({ detail: { source, summary, context, sample } }) => {
   supplyContext = context;
   byId('intake-screening-summary').textContent = summary;
   byId('intake-screening').hidden = false;
@@ -356,7 +355,12 @@ document.addEventListener('corevia:open-bid', ({ detail: { source, summary, cont
     reason.value = '';
     decision.value = '';
   }
-  extractDraft();
+  if (experienceMode && sample) {
+    showDraft({ ...extractConditions(source), deadline: '2026-07-22', firstDelivery: '2026-08-02',
+      deliverySchedule: '2026-08-02 PL-01 10000; 2026-08-02 PL-02 6000',
+      deliveryEvidence: '체험용 바이어 회신 SIM-BUYER-001', splitDelivery: '일괄 납품' });
+    byId('reviewer').value = '체험 영업 담당자';
+  } else extractDraft();
 });
 byId('review-form').addEventListener('input', (event) => {
   if ([...inputs.values()].includes(event.target)) {
@@ -409,7 +413,7 @@ byId('review-form').addEventListener('submit', (event) => {
       .filter(([key, proof]) => record.conditions[key] === proof.value));
   }
   try {
-    localStorage.setItem(storageKey, JSON.stringify(record));
+    if (!saveState('intake', record)) throw new Error();
   } catch {
     saveNotice.textContent = '브라우저에 저장할 수 없습니다. 저장소 권한을 확인하세요.';
     return;

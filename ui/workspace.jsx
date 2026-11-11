@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
-import { loadState } from '../public/workflow-storage.mjs';
+import { experienceMode, loadState } from '../public/workflow-storage.mjs';
+import { bids, weeks } from './supply-overview-data.mjs';
 import { CustomerTrends, DecisionOverview, ProductionOverview, ScenarioLab } from './decision-views.jsx';
 import { SupplyOverview } from './supply-overview.jsx';
 import './workspace.css';
@@ -75,6 +76,13 @@ function Workspace() {
     return () => window.removeEventListener('hashchange', update);
   }, []);
   const [, title] = pages.find(([key]) => key === view);
+  const sample = () => {
+    const bid = bids[0];
+    document.dispatchEvent(new CustomEvent('corevia:open-bid', { detail: {
+      source: bid.source, summary: '5분 체험 · 모의 바이어 회신 포함', sample: true,
+      context: { customer: bid.id, route: bid.route, selectedWeek: weeks[0].start, weeks },
+    } }));
+  };
   return <>
     {portal('workspace-nav', <>
       <a className="workspace-brand" href="#dashboard-heading"><span className="brand-mark" aria-hidden="true">C</span><span><strong>Corevia</strong><small>약속계획</small></span></a>
@@ -84,8 +92,23 @@ function Workspace() {
       </nav>
     </>)}
     {portal('workspace-header', <div className="context-bar">
-      <div><strong>{title}</strong><span>W05 · 시연 환경</span></div>
-      <button type="button" className="secondary" onClick={() => openAssistant(title)}>✦ 업무 어시스턴트</button>
+      <div><strong>{title}</strong><span>{experienceMode ? '5분 체험 · 이 탭에만 저장' : 'W05 · 입찰 검토'}</span></div>
+      <div>
+        {!experienceMode && workflow.record && <a href="?experience=1#dashboard-heading">5분 체험</a>}
+        <button type="button" className="secondary" onClick={() => openAssistant(title)}>✦ 업무 어시스턴트</button>
+      </div>
+    </div>)}
+    {portal('experience-guide', experienceMode ? <div className="guide-strip">
+      <div><strong>5분 체험</strong><p>{view === 'intake' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
+        : view === 'capacity' ? '확정 납품표를 불러와 계산하고 제품 행의 계산 근거를 확인하세요.'
+          : view === 'proposal' ? '세 부서가 같은 버전을 수락한 뒤 참여 승인과 모의 제출을 기록하세요.'
+            : '모의 자료로 시작해 계산 근거를 확인하고 승인까지 체험하세요.'}</p></div>
+      <a href="?#dashboard-heading">일반 검토로 돌아가기</a>
+    </div> : null)}
+    {portal('start-options', !workflow.record && <div className="guide-strip">
+      <div><strong>어떤 방식으로 시작하시겠어요?</strong><p>체험 기록은 이 탭에만 저장됩니다.</p></div>
+      {experienceMode ? <a className="primary-link" href="#intake-request" onClick={sample}>모의 자료 불러오기</a>
+        : <><a className="primary-link" href="?experience=1#dashboard-heading">예시 데이터로 5분 체험</a><a href="#intake-request">내 입찰 자료로 시작</a></>}
     </div>)}
     {portal('decision-overview', <DecisionOverview {...workflow} />)}
     {portal('supply-overview', <SupplyOverview />)}

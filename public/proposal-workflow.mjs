@@ -92,6 +92,28 @@ function render() {
   const blocked = blockReason();
   const issues = intake && review ? proposalIssues(intake.conditions, review.plans) : [];
   renderList('proposal-issues', issues);
+  const report = byId('decision-report');
+  const heading = document.createElement('h3');
+  heading.textContent = '의사결정 보고서';
+  const list = document.createElement('dl');
+  const sum = (read) => review.plans.reduce((amount, row) => amount + read(row), 0).toLocaleString('ko-KR') + ' EA';
+  const facts = [
+    ['공급안', review ? `버전 ${review.version} · ${review.needsRecalculation ? '재계산 필요' : '현재 계산'}` : '미산정'],
+    ['제안량 · 신규 미충족', review && !review.needsRecalculation ? `${sum((row) => row.revised.proposal)} · ${sum((row) => row.unmetRequest)}` : '계산 필요'],
+    ['기존 납기 위험', review && !review.needsRecalculation ? `기존 부족 ${sum((row) => row.revised.existingShortage)} · 입력된 확정 약속 기준` : '검증 필요'],
+    ['경제성', review && !review.needsRecalculation ? byId('finance-comparison').textContent : '생산계획 계산 후 재무 검토'],
+    ['계약 위험', intake ? `결제 ${intake.conditions.payment || '미확인'} · 지연 페널티 ${intake.conditions.penalty || '미확인'} · 회수 비용 ${intake.conditions.recall || '미확인'}` : '입찰 요청서 확인 필요'],
+    ['미해결 항목', issues.length ? issues.join(' · ') : blocked || '현재 승인 차단 항목 없음'],
+    ['부서 검수', review ? roles.map((role) => `${role} ${review.reviews.get(role)?.decision === 'accepted' ? '수락' : '확인 필요'}`).join(' · ') : '검수 대기'],
+  ];
+  for (const [label, content] of facts) {
+    const dt = document.createElement('dt');
+    const dd = document.createElement('dd');
+    dt.textContent = label;
+    dd.textContent = content;
+    list.append(dt, dd);
+  }
+  report.replaceChildren(heading, list);
   byId('proposal-issues').hidden = !issues.length;
   approvalForm.hidden = Boolean(blocked || approval);
   byId('proposal-document').hidden = Boolean(blocked || approval?.decision !== 'approved');

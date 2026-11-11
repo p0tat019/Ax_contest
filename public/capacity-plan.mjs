@@ -1,5 +1,24 @@
 import { dateKey } from './proposal-checks.mjs';
 
+const allocationOrder = (a, b) =>
+  (a.deliveryDate ?? '').localeCompare(b.deliveryDate ?? '') || a.product.localeCompare(b.product);
+
+export function expansionAvailable(quantity, commissioning, delivery) {
+  const start = dateKey(commissioning);
+  const cutoff = dateKey(delivery);
+  return start && cutoff && start <= cutoff ? quantity : 0;
+}
+export function capacityTrace(plan, plans) {
+  const effective = plan.capacity - plan.reduction;
+  const existing = plan.commitments + plan.additional;
+  const production = Math.min(plan.requested, Math.max(0, effective - existing));
+  const previouslyAllocated = plan.shipping ? plans.filter((other) =>
+    other.shipping?.week === plan.shipping.week && allocationOrder(other, plan) < 0)
+    .reduce((sum, other) => sum + other.revised.proposal, 0) : 0;
+  const shippingAvailable = plan.shipping
+    ? Math.max(0, plan.shipping.capacity - plan.shipping.booked - previouslyAllocated) : null;
+  return { effective, existing, production, previouslyAllocated, shippingAvailable };
+}
 function allocate(capacity, commitments, requested) {
   return {
     proposal: Math.min(requested, Math.max(0, capacity - commitments)),
@@ -68,9 +87,7 @@ export function compareCapacity(rows, shipping = new Map(), previousShipping = s
     const revised = allocate(capacity - reduction, commitments + additional, requested);
     return { ...row, baseline, revised, unmetRequest: requested - revised.proposal };
   });
-  const ordered = [...plans].sort((a, b) =>
-    (a.deliveryDate ?? '').localeCompare(b.deliveryDate ?? '') || a.product.localeCompare(b.product)
-  );
+  const ordered = [...plans].sort(allocationOrder);
   const remaining = { baseline: new Map(), revised: new Map() };
   for (const plan of ordered) {
     const week = deliveryWeek(plan.deliveryDate);

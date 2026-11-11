@@ -1,4 +1,4 @@
-import { compareCapacity, deliveryWeek, shippingRecords, verifyShippingEvidence } from './capacity-plan.mjs';
+import { capacityTrace, compareCapacity, deliveryWeek, shippingRecords, verifyShippingEvidence } from './capacity-plan.mjs';
 import { deliverySchedule } from './proposal-checks.mjs';
 import { scenarios } from './capacity-scenarios.mjs';
 import { setReviewPlan } from './department-review.mjs';
@@ -48,7 +48,7 @@ function supplyEvidence(row) {
 
 function saveDraft() {
   updateEvidenceFields();
-  invalidateCalculation();
+  invalidateCalculation(true);
   saveState('capacity', { intakeVersion: intake.version, rows: currentRows(), shipping: shippingInput.value, calculated: false });
   status.textContent = '';
 }
@@ -72,9 +72,9 @@ function updateEvidenceFields() {
   }
 }
 
-function invalidateCalculation() {
+function invalidateCalculation(edited = false) {
   result.hidden = true;
-  setReviewPlan(null);
+  setReviewPlan(null, undefined, edited);
 }
 
 function currentRows() {
@@ -135,6 +135,34 @@ function appendCell(row, content) {
   const cell = row.insertCell();
   if (typeof content === 'string') cell.textContent = content;
   else cell.append(content);
+}
+
+function evidencePanel(plan, plans) {
+  const trace = capacityTrace(plan, plans);
+  const n = (value) => format.format(value);
+  const details = document.createElement('details');
+  const label = document.createElement('summary');
+  label.textContent = `${plan.product} 계산 근거`;
+  details.append(label);
+  const lines = [
+    `유효 공급능력 · ${n(plan.capacity)} − ${n(plan.reduction)} = ${n(trace.effective)} EA`,
+    `기존 약속 · ${n(plan.commitments)} + ${n(plan.additional)} = ${n(trace.existing)} EA`,
+    `생산 기준 배정 · min(${n(plan.requested)}, max(0, ${n(trace.effective)} − ${n(trace.existing)})) = ${n(trace.production)} EA`,
+    plan.shipping
+      ? `공동 출고 잔여 · max(0, ${n(plan.shipping.capacity)} − 예약 ${n(plan.shipping.booked)} − 앞선 품목 배정 ${n(trace.previouslyAllocated)}) = ${n(trace.shippingAvailable)} EA. 납품일과 품목 코드 순으로 배정합니다.`
+      : '출고 근거 미입력 · 생산 기준 잠정치이며 승인 전에 출고 근거가 필요합니다.',
+    `제안 ${n(plan.revised.proposal)} EA · 미충족 ${n(plan.requested)} − ${n(plan.revised.proposal)} = ${n(plan.unmetRequest)} EA · 기존 부족 ${n(plan.revised.existingShortage)} EA`,
+    `생산·주문 근거 · ${plan.source}`,
+    plan.shipping ? `출고 근거 · ${plan.shipping.source}` : '',
+  ];
+  const list = document.createElement('ol');
+  for (const line of lines.filter(Boolean)) {
+    const item = document.createElement('li');
+    item.textContent = line;
+    list.append(item);
+  }
+  details.append(list);
+  return details;
 }
 
 function addInput(row, name, label, type, value, required = true) {
@@ -265,11 +293,7 @@ form.addEventListener('submit', (event) => {
       for (const quantity of [baseline.proposal, revised.proposal, baseline.existingShortage, revised.existingShortage, unmetRequest]) {
         appendCell(row, format.format(quantity));
       }
-      appendCell(row, `실효능력 ${format.format(plan.capacity)} − ${format.format(plan.reduction)} · 기존 약속 ${format.format(plan.commitments)} + ${format.format(plan.additional)} · 신규 요청 ${format.format(plan.requested)} · ${plan.source}`);
-      const shippingCell = row.cells[row.cells.length - 1];
-      shippingCell.textContent += plan.shipping
-        ? ` · 출고 한도 ${format.format(plan.shipping.capacity)} − 예약 ${format.format(plan.shipping.booked)} · 물류 제약으로 제외 ${format.format(plan.shipping.restricted)} EA · ${plan.shipping.source}`
-        : ' · 물류 미확인';
+      appendCell(row, evidencePanel(plan, plans));
       shortage += revised.existingShortage;
       const total = totals.get(product) ?? [0, 0];
       total[0] += baseline.proposal;
@@ -285,7 +309,8 @@ form.addEventListener('submit', (event) => {
     status.textContent = '';
     result.hidden = false;
     saveState('capacity', { intakeVersion: intake.version, rows: inputs, shipping: shippingInput.value, calculated: true });
-    setReviewPlan({ intakeVersion: intake.version, customer: intake.conditions.customer, plans }, focusRow);
+    const version = setReviewPlan({ intakeVersion: intake.version, customer: intake.conditions.customer, plans }, focusRow);
+    byId('capacity-audit-meta').textContent = `공급안 버전 ${version} · 접수 검수 ${intake.version} · 이번 계산 ${new Date().toLocaleString('ko-KR')} · 자료 기준일 ${intake.evidence?.asOf ?? '미기록'}`;
   } catch (error) {
     status.textContent = error.message;
   }

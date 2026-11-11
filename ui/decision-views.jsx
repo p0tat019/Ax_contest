@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import evidence from '../public/intake-data.json';
-import { compareCapacity } from '../public/capacity-plan.mjs';
+import { compareCapacity, expansionAvailable } from '../public/capacity-plan.mjs';
 import { deliverySchedule } from '../public/proposal-checks.mjs';
 import { weeks, bids, assessBid, freeSupply } from './supply-overview-data.mjs';
 
@@ -61,14 +61,7 @@ export function DecisionOverview({ record, plans, next, href, approved, decision
       <div className="decision-next">
         <span className="eyebrow">다음 결정</span><h2>{approved ? '승인 조건과 후속 업무' : '검토를 진행하려면'}</h2>
         <p>{next || '영업 담당자가 입찰 요청과 확정 납품 조건을 확인하세요.'}</p>
-        <a className="primary-link" href={href || '#intake-request'} onClick={() => {
-          if (record || document.getElementById('request').value.trim()) return;
-          const bid = bids[0];
-          document.dispatchEvent(new CustomEvent('corevia:open-bid', { detail: {
-            source: bid.source, summary: `C-201 · ${week.label} · 시연 가정`,
-            context: { customer: bid.id, route: bid.route, selectedWeek: week.start, weeks },
-          } }));
-        }}>{!record ? 'C-201 입찰 검토 시작' : href === '#capacity-entry' ? '공급안 계산 열기' : href === '#department-review' ? '부서 검수 열기' : '필요한 작업 열기'} <span aria-hidden="true">→</span></a>
+        {record && <a className="primary-link" href={href || '#intake-request'}>{href === '#capacity-entry' ? '공급안 계산 열기' : href === '#department-review' ? '부서 검수 열기' : '필요한 작업 열기'} <span aria-hidden="true">→</span></a>}
         <a className="text-link" href="#scenario-heading">가정으로 시나리오 비교</a>
       </div>
     </div>
@@ -132,11 +125,15 @@ export function CustomerTrends() {
 
 export function ScenarioLab() {
   const [weekIndex, setWeek] = useState(0);
+  const [commissioning, setCommissioning] = useState('');
   const [inputs, setInputs] = useState({ growth: '', export: '', cost: '', margin: '' });
   const week = weeks[weekIndex];
+  const end = new Date(`${week.start}T00:00:00Z`);
+  end.setUTCDate(end.getUTCDate() + 6);
+  const deadline = end.toISOString().slice(0, 10);
   const shipping = week.shipments.find((row) => row.route === '수출 출고');
   const basis = week.products.map((product, index) => ({
-    week: week.start, deliveryDate: week.start, product: product.code, plant: 'F1', line: `L-0${index + 1}`,
+    week: week.start, deliveryDate: deadline, product: product.code, plant: 'F1', line: `L-0${index + 1}`,
     capacity: product.stock - product.hold + product.output, commitments: product.recurring + product.reserved,
     requested: bids[0].demand[product.code], additional: 0, reduction: 0, source: '시연용 주간 공급 가정',
   }));
@@ -145,7 +142,8 @@ export function ScenarioLab() {
   const modes = [
     ['현상 유지', basis.map((row) => ({ ...row, requested: 0 })), 0],
     ['부분 공급', basis, 0],
-    ['증설 가정', basis.map((row) => ({ ...row, capacity: row.capacity + (row.product === 'PL-02' ? parsed.growth ?? 0 : 0) })), parsed.export ?? 0],
+    ['증설 가정', basis.map((row) => ({ ...row, capacity: row.capacity + (row.product === 'PL-02'
+      ? expansionAvailable(parsed.growth ?? 0, commissioning, deadline) : 0) })), parsed.export ?? 0],
   ];
   return <div className="analysis-panel">
     <div className="section-heading"><h1 id="scenario-heading">시나리오 분석</h1><span className="decision-pill">미검증 · 가정 계산</span></div>
@@ -158,8 +156,9 @@ export function ScenarioLab() {
         ['cost', '투자비 (원)'], ['margin', '평균 공헌이익 (원/EA)'],
       ].map(([key, label]) => <label key={key}>{label}<input type="number" min="0" max="1000000000000" step="1" value={inputs[key]} placeholder="미입력"
         onChange={(event) => setInputs((previous) => ({ ...previous, [key]: event.target.value }))} /></label>)}
+      <label>증설 설비 가동 예정일<input type="date" value={commissioning} onChange={(event) => setCommissioning(event.target.value)} /></label>
     </div>
-    <p className="supply-note">대상 C-201 · 비교 요청 {ea(total(basis, (row) => row.requested))} · 시연 데이터입니다. 기존 예정량과 증설분은 해당 주 안에 입고된다고 가정합니다.</p>
+    <p className="supply-note">대상 C-201 · 비교 요청 {ea(total(basis, (row) => row.requested))} · 시연 데이터입니다. 비교 납품일은 {deadline}이며, 증설량은 이 날짜까지 가동 가능한 경우에만 반영됩니다.</p>
     {!valid ? <p role="alert">가정값은 0 이상 1조 이하의 정수로 입력하세요.</p> : <div className="scenario-cards">
       {modes.map(([label, rows, additionalExport], index) => {
         const plans = compareCapacity(rows, new Map([[week.start, { capacity: shipping.capacity + additionalExport, booked: shipping.booked, source: '시연용 수출 한도' }]]));

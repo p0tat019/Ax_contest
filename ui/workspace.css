@@ -78,6 +78,13 @@ meter::-webkit-meter-optimum-value { background: #338d70; border-radius: 8px; }
 .scenario-cards article > strong { font-size: 25px; }
 .scenario-cards dl { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); font-size: 13px; margin-bottom: 0; }
 .scenario-cards dd { text-align: right; }
+.guide-strip { display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; padding: 14px 18px; margin: 14px 0; background: #edf5f0; border: 1px solid #d4e4da; border-radius: 10px; }
+.guide-strip > div { flex: 1 1 230px; }
+.guide-strip p { margin: 3px 0 0; color: var(--muted); font-size: 14px; }
+#capacity-comparison details[open] { min-width: 250px; }
+#capacity-comparison details ol { margin: 0; padding-left: 19px; }
+#decision-report { margin: 14px 0; }
+#decision-report dl { margin-bottom: 0; }
 #assistant-panel { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(100%, 460px); height: 100%; max-height: none; max-width: 100%; border: 0; border-left: 1px solid var(--line); padding: 24px; color: var(--ink); background: white; overflow: auto; }
 #assistant-panel::backdrop { background: rgb(22 41 32 / 32%); }
 #assistant-panel #assistant-grounding { padding: 12px; background: var(--soft); font-size: 14px; }

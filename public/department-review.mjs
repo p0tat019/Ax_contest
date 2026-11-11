@@ -18,7 +18,7 @@ function persistReview() {
   saveState('department', { ...latest, reviews: [...latest.reviews] });
 }
 
-export function setReviewPlan(plan, onEditRow) {
+export function setReviewPlan(plan, onEditRow, edited = false) {
   section.hidden = !plan;
   byId('department-empty').hidden = Boolean(plan);
   editRow = onEditRow;
@@ -28,6 +28,11 @@ export function setReviewPlan(plan, onEditRow) {
   byId('department-notice').textContent = '';
   if (!plan) {
     active = null;
+    if (edited && latest?.signature) {
+      latest.signature = null;
+      latest.reviews.clear();
+      persistReview();
+    }
     setWorkflowReview(null);
     return;
   }
@@ -41,6 +46,7 @@ export function setReviewPlan(plan, onEditRow) {
   feedbackRow.replaceChildren(...active.plans.map((row, index) =>
     new Option(`${row.week} · ${row.product} · ${row.plant}/${row.line}`, index)));
   renderReview();
+  return active.version;
 }
 
 function renderReview() {

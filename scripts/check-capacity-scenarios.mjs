@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { compareCapacity, shippingRecords, verifyShippingEvidence } from '../public/capacity-plan.mjs';
+import { capacityTrace, compareCapacity, expansionAvailable, shippingRecords, verifyShippingEvidence } from '../public/capacity-plan.mjs';
 import { scenarios } from '../public/capacity-scenarios.mjs';
 import { deliverySchedule, proposalIssues } from '../public/proposal-checks.mjs';
 
@@ -38,6 +38,12 @@ assert.deepEqual(proposalIssues(conditions, compareCapacity(inputs, original)), 
 assert.match(proposalIssues(conditions, compareCapacity(inputs)).join(), /출고 한도/);
 const changed = compareCapacity(inputs, booked, original);
 assert.deepEqual(changed.map((row) => row.revised.proposal), [30, 10]);
+assert.deepEqual(capacityTrace(changed[1], changed), {
+  effective: 100, existing: 20, production: 30, previouslyAllocated: 30, shippingAvailable: 10,
+});
+assert.throws(() => compareCapacity([inputs[0], { ...inputs[1], line: inputs[0].line }]), /같은 주의 라인/);
+assert.equal(expansionAvailable(500, '2026-08-03', date), 0);
+assert.equal(expansionAvailable(500, date, date), 500);
 assert.deepEqual(changed.map((row) => row.baseline.proposal), [30, 30]);
 assert.match(proposalIssues(conditions, changed).join(), /확정 30 EA \/ 제안 10 EA/);
 const later = '2026-08-09';

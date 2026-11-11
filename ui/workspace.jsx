@@ -5,6 +5,7 @@ import { experienceMode, loadState } from '../public/workflow-storage.mjs';
 import { bids, weeks } from './supply-overview-data.mjs';
 import { CustomerTrends, DecisionOverview, ProductionOverview, ScenarioLab } from './decision-views.jsx';
 import { SupplyOverview } from './supply-overview.jsx';
+import { BidTrial } from './bid-trial-view.jsx';
 import './workspace.css';
 
 const pages = [
@@ -15,7 +16,7 @@ const pages = [
   ['proposal', '검수·승인', 'proposal-workflow', '✓'],
 ];
 const aliases = { review: 'intake', result: 'intake', 'intake-request': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
-  'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal' };
+  'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal', 'trial-heading': 'scenario' };
 const byId = (id) => document.getElementById(id);
 const hash = () => window.location.hash.slice(1);
 const viewForHash = () => pages.find(([id, , anchor]) => id === hash() || anchor === hash())?.[0] ?? aliases[hash()] ?? 'dashboard';
@@ -111,6 +112,11 @@ function Workspace() {
         : <><a className="primary-link" href="?experience=1#dashboard-heading">예시 데이터로 5분 체험</a><a href="#intake-request">내 입찰 자료로 시작</a></>}
     </div>)}
     {portal('decision-overview', <DecisionOverview {...workflow} />)}
+    {portal('trial-start', <div className="guide-strip"><div><strong>입력이 바뀌어도 결과를 검증할 수 있나요?</strong>
+      <p>랜덤 입찰을 계산하고 독립 기대값과 바로 대조합니다.</p></div>
+      <a className="primary-link" href="#trial-heading" onClick={() => document.dispatchEvent(new Event('corevia:random-trial'))}>랜덤 입찰 바로 검증</a>
+    </div>)}
+    {portal('trial-view', <BidTrial />)}
     {portal('supply-overview', <SupplyOverview />)}
     {portal('customer-trends', <CustomerTrends />)}
     {portal('production-overview', <ProductionOverview plans={workflow.plans} />)}

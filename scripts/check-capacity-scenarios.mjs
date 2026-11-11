@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { capacityTrace, compareCapacity, expansionAvailable, shippingRecords, verifyShippingEvidence } from '../public/capacity-plan.mjs';
 import { scenarios } from '../public/capacity-scenarios.mjs';
 import { deliverySchedule, proposalIssues } from '../public/proposal-checks.mjs';
+import { defaults, generateTrial, runGoldenTrials, runTrial } from '../ui/bid-trial.mjs';
 
 for (const scenario of scenarios) {
   if (scenario.expectedError) {
@@ -60,3 +61,17 @@ assert.throws(() => verifyShippingEvidence([date], new Map(), original), /물류
 assert.throws(() => verifyShippingEvidence([date], shippingRecords(`${week} | 100 | 60 | 모의 물류 회신`), original), /새 물류 회신/);
 assert.doesNotThrow(() => verifyShippingEvidence([date], booked, original));
 console.log('PASS shared shipping capacity, exact delivery dates and quantities, buyer-approved split, missing evidence');
+assert.ok(runGoldenTrials().every((row) => row.passed));
+const generated = new Set();
+for (let seed = 0; seed < 500; seed++) {
+  const inputs = generateTrial(seed);
+  const trial = runTrial(inputs);
+  assert.deepEqual(trial, runTrial(generateTrial(seed)), `seed ${seed} replay`);
+  assert.ok(trial.checks.every(([, passed]) => passed), `seed ${seed} independent validation`);
+  generated.add(JSON.stringify(inputs));
+}
+assert.equal(generated.size, 500);
+assert.equal(runTrial({ ...defaults, extra: 60 }).plans[1].revised.proposal, 10);
+assert.match(runTrial({ ...defaults, shipping: 5, booked: 10 }).action, /출고 예약 초과/);
+assert.throws(() => runTrial({ ...defaults, demand1: '' }), /범위의 정수/);
+console.log('PASS 5 fixed expectations and 500 reproducible generated cases');

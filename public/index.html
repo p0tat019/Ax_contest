@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
     <link rel="stylesheet" href="./intake.css">
-    <link rel="stylesheet" href="./workspace.css">
-    <script type="module" src="./workspace.js"></script>
+    <link rel="stylesheet" href="./workspace.css?v=dashboard-demo-1">
+    <script type="module" src="./workspace.js?v=dashboard-demo-1"></script>
     <script type="module" src="./intake.mjs"></script>
     <script type="module" src="./assistant.mjs"></script>
   </head>
@@ -15,6 +15,13 @@
     <aside id="workspace-nav" aria-label="업무 메뉴"></aside>
     <main>
       <header id="workspace-header"></header>
+      <section class="trial-launch" data-view="dashboard" aria-label="모의 입찰 테스트">
+        <div class="guide-strip">
+          <div><strong>모의 입찰 테스트</strong><p>자료 입력 없이 입찰 접수부터 공급안 검증까지 4단계로 확인하세요.</p></div>
+          <button id="dashboard-trial-start" type="button" aria-haspopup="dialog" disabled>테스트 진행하기</button>
+          <a href="#trial-heading">랜덤 조건·직접 입력 →</a>
+        </div>
+      </section>
       <div id="workflow-map"></div>
       <div id="experience-guide"></div>
       <dialog id="assistant-panel" aria-labelledby="assistant-heading">
@@ -35,7 +42,6 @@
       </dialog>
       <section id="dashboard-heading" data-view="dashboard" class="decision-page" aria-label="종합 현황">
         <div id="start-options"></div>
-        <div id="trial-start"></div>
         <div id="decision-overview"></div>
         <details class="disclosure-panel">
           <summary>입찰 대기열과 주간 공급 근거</summary>
@@ -173,7 +179,7 @@
         </details>
       </section>
       <section data-view="scenario" class="decision-page" aria-label="시나리오 분석">
-        <div id="trial-view"></div>
+        <div id="trial-heading"></div>
         <div id="scenario-view"></div>
       </section>
       <section id="proposal-workflow" data-view="proposal">

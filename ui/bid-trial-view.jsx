@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { capacityTrace } from '../public/capacity-plan.mjs';
 import { defaults, generateTrial, prepareTrial, runGoldenTrials, runTrial } from './bid-trial.mjs';
 
@@ -159,9 +160,28 @@ export function BidTrial() {
   function randomize() { replay(String(crypto.getRandomValues(new Uint32Array(1))[0])); }
 
   useEffect(() => {
-    document.addEventListener('corevia:random-trial', randomize);
-    return () => document.removeEventListener('corevia:random-trial', randomize);
+    const button = document.getElementById('dashboard-trial-start');
+    function startWithDefaults() {
+      setSeed('');
+      setRunSeed(null);
+      setBaseline(null);
+      setInput(initial);
+      calculate(initial, false);
+    }
+    button.disabled = false;
+    button.addEventListener('click', startWithDefaults);
+    return () => {
+      button.removeEventListener('click', startWithDefaults);
+      button.disabled = true;
+    };
   }, []);
+
+  function showResult() {
+    if (document.body.dataset.workspace !== 'scenario') {
+      window.addEventListener('hashchange', () => requestAnimationFrame(() => resultHeading.current?.focus()), { once: true });
+      window.location.hash = 'trial-heading';
+    } else requestAnimationFrame(() => resultHeading.current?.focus());
+  }
 
   function edit(key, value) {
     setInput((previous) => ({ ...previous, [key]: value }));
@@ -171,7 +191,7 @@ export function BidTrial() {
   }
 
   return <div className="analysis-panel trial-panel">
-    <div className="section-heading"><h2 id="trial-heading">랜덤 입찰 검증</h2><span className="decision-pill">모의 입력 · 읽기 전용 검증</span></div>
+    <div className="section-heading"><h2>랜덤 입찰 검증</h2><span className="decision-pill">모의 입력 · 읽기 전용 검증</span></div>
     <p>모의 입찰서에서 조건을 추출하고 실제 공급계획 계산과 납품표 검증을 실행합니다. 승인·제출 기록에는 반영되지 않습니다.</p>
     <div className="trial-actions">
       <button type="button" onClick={randomize}>새 랜덤 입찰 실행</button>
@@ -199,8 +219,8 @@ export function BidTrial() {
     {result && !dirty && <div className="trial-results">
       <div className="section-heading"><h3 ref={resultHeading} tabIndex={-1}>이번 테스트 실행 내역</h3>
         <button type="button" className="secondary" onClick={() => setPlaying(true)}>시연 다시 보기</button></div>
-      {playing && <TrialPlayback result={result} onClose={() => setPlaying(false)}
-        onShowResult={() => requestAnimationFrame(() => resultHeading.current?.focus())} />}
+      {playing && createPortal(<TrialPlayback result={result} onClose={() => setPlaying(false)}
+        onShowResult={showResult} />, document.body)}
       <p className="supply-note">{result.filled.length ? `기본값 적용 · ${result.filled.map((key) => `${fieldName(key)} ${defaults[key]}`).join(' · ')}` : '입력한 값으로 계산했습니다.'}</p>
       <h3>{result.action}</h3>
       <p>{runSeed !== null && `원본 재현 번호 ${runSeed} · `}납품일 2026-08-02 · 증설 반영 {result.expansion} EA · 품목 순서대로 공동 출고 한도를 배정합니다.</p>

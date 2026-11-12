@@ -7,6 +7,28 @@ const delivery = '2026-08-02';
 export const defaults = { capacity1: 100, capacity2: 100, existing1: 30, existing2: 30,
   demand1: 30, demand2: 30, extra: 0, shipping: 80, booked: 10, expansion: 0, start: delivery };
 
+export function prepareTrial(input) {
+  const values = {};
+  const filled = [];
+  for (const [key, fallback] of Object.entries(defaults)) {
+    const raw = input[key];
+    if (raw === '' || raw === undefined) {
+      values[key] = fallback;
+      filled.push(key);
+    } else if (key === 'start') {
+      values[key] = raw;
+    } else {
+      if (!/^\d{1,3}$/.test(String(raw)) || Number(raw) > 500
+        || (key.startsWith('demand') && Number(raw) < 1)) {
+        return { errorKey: key };
+      }
+      values[key] = Number(raw);
+    }
+  }
+  if (![delivery, '2026-08-03'].includes(values.start)) return { errorKey: 'start' };
+  return { values, filled };
+}
+
 export function generateTrial(seed) {
   let state = seed >>> 0;
   const pick = (min, max) => {
@@ -76,7 +98,13 @@ export function runTrial(input) {
       : overloaded ? '기존 출고 예약 초과 · 물류 계획 조정 필요'
         : issues.length ? '확정 납품표와 불일치 · 물량 또는 일정 재협의 필요'
           : '입력 조건 충족 · 담당자 검수로 진행 가능';
-  return { source, plans, issues, checks, expected, expansion, action };
+  const stages = [
+    ['입찰 요청 접수', `${conditions.customer} · ${rows.length}개 품목 · 초도 ${conditions.firstDelivery}`],
+    ['기존 납품·공급 여력 확인', `기존 약속 ${input.existing1 + input.existing2 + input.extra} EA · 출고 예약 ${input.booked}/${input.shipping} EA`],
+    ['공급조건 계산·검증', `신규 배정 ${actual.reduce((sum, value) => sum + value, 0)} EA · 독립 대조 ${checks.filter(([, pass]) => pass).length}/${checks.length} 통과`],
+    ['검토 결과', action],
+  ];
+  return { source, plans, issues, checks, expected, expansion, action, stages };
 }
 
 export const goldenTrials = [

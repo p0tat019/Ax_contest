@@ -16,7 +16,7 @@ const pages = [
   ['proposal', '검수·승인', 'proposal-workflow', '✓'],
 ];
 const aliases = { review: 'intake', result: 'intake', 'intake-request': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
-  'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal', 'trial-heading': 'scenario' };
+  'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal', 'proposal-document': 'proposal', 'trial-heading': 'scenario' };
 const byId = (id) => document.getElementById(id);
 const hash = () => window.location.hash.slice(1);
 const viewForHash = () => pages.find(([id, , anchor]) => id === hash() || anchor === hash())?.[0] ?? aliases[hash()] ?? 'dashboard';
@@ -29,6 +29,9 @@ function useWorkflow() {
       && !department.needsRecalculation ? department.plans ?? [] : [];
     return {
       record, plans, approved: !byId('proposal-document').hidden,
+      reviewed: Boolean(plans.length && ['영업','생산관리','재무·전략'].every((role) =>
+        department?.reviews?.some(([name, item]) => name === role && item.decision === 'accepted'))),
+      submitted: Boolean(loadState('proposal')?.submitted),
       decision: loadState('proposal')?.approval?.decision,
       next: byId('workflow-next').textContent, href: byId('workflow-next-link').getAttribute('href'),
     };
@@ -49,6 +52,7 @@ function useWorkflow() {
 
 function Workspace() {
   const [view, setView] = useState(viewForHash);
+  const [anchor, setAnchor] = useState(hash);
   const workflow = useWorkflow();
   const dialog = byId('assistant-panel');
   const openAssistant = (area) => {
@@ -66,6 +70,7 @@ function Workspace() {
       if (dialog.open) dialog.close();
       document.body.dataset.workspace = next;
       setView(next);
+      setAnchor(hash());
       const target = Object.hasOwn(aliases, hash()) ? byId(hash()) : null;
       if (target?.closest('#capacity-entry')) byId('capacity-entry').open = true;
       if (hash() === 'workflow-history') target.closest('details').open = true;
@@ -99,6 +104,7 @@ function Workspace() {
         <button type="button" className="secondary" onClick={() => openAssistant(title)}>✦ 업무 어시스턴트</button>
       </div>
     </div>)}
+    {portal('workflow-map', <WorkflowMap workflow={workflow} view={view} anchor={anchor} />)}
     {portal('experience-guide', experienceMode ? <div className="guide-strip">
       <div><strong>5분 체험</strong><p>{view === 'intake' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
         : view === 'capacity' ? '확정 납품표를 불러와 계산하고 제품 행의 계산 근거를 확인하세요.'
@@ -122,6 +128,30 @@ function Workspace() {
     {portal('production-overview', <ProductionOverview plans={workflow.plans} />)}
     {portal('scenario-view', <ScenarioLab />)}
   </>;
+}
+
+function WorkflowMap({ workflow, view, anchor }) {
+  const { record, plans, reviewed, approved, submitted, next, href } = workflow;
+  const steps = [
+    ['접수·자료 확인', '#intake-request', record?.decision === 'accepted'],
+    ['공급안 계산', '#capacity-entry', plans.length > 0],
+    ['부서 검수', '#department-review', reviewed],
+    ['참여 승인', '#proposal-workflow', approved],
+    ['모의 제출·회신', '#proposal-document', submitted],
+  ];
+  const current = view === 'intake' ? 0 : view === 'capacity' ? 1
+    : view === 'proposal' ? anchor === 'department-review' ? 2 : anchor === 'proposal-document' ? 4 : 3 : -1;
+  return <nav aria-label="입찰 진행 단계" className="workflow-map">
+    <ol>{steps.map(([label, target, complete], index) => <li key={target}>
+      <a href={target} aria-current={current === index ? 'step' : undefined}>
+        <span className="workflow-number" aria-hidden="true">{complete ? '✓' : index + 1}</span>
+        <strong>{label}</strong><small>{current === index ? '현재 화면' : complete ? '완료' : '대기'}</small>
+      </a>
+    </li>)}</ol>
+    <p>{view === 'scenario' ? '테스트 화면 · 승인 기록과 분리' : next}
+      {view === 'scenario' ? <a href="#dashboard-heading">종합 현황으로 돌아가기 →</a>
+        : href && <a href={href}>{steps.find(([, target]) => target === href)?.[0] ?? '다음 작업'} 열기 →</a>}</p>
+  </nav>;
 }
 
 const portal = (id, content) => createPortal(content, byId(id));

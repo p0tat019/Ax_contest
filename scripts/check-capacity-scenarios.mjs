@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { capacityTrace, compareCapacity, expansionAvailable, shippingRecords, verifyShippingEvidence } from '../public/capacity-plan.mjs';
 import { scenarios } from '../public/capacity-scenarios.mjs';
 import { deliverySchedule, proposalIssues } from '../public/proposal-checks.mjs';
-import { defaults, generateTrial, runGoldenTrials, runTrial } from '../ui/bid-trial.mjs';
+import { defaults, generateTrial, prepareTrial, runGoldenTrials, runTrial } from '../ui/bid-trial.mjs';
 
 for (const scenario of scenarios) {
   if (scenario.expectedError) {
@@ -75,3 +75,12 @@ assert.equal(runTrial({ ...defaults, extra: 60 }).plans[1].revised.proposal, 10)
 assert.match(runTrial({ ...defaults, shipping: 5, booked: 10 }).action, /출고 예약 초과/);
 assert.throws(() => runTrial({ ...defaults, demand1: '' }), /범위의 정수/);
 console.log('PASS 5 fixed expectations and 500 reproducible generated cases');
+assert.deepEqual(prepareTrial({}).values, defaults);
+assert.equal(prepareTrial({ extra: '0' }).values.extra, 0);
+assert.ok(!prepareTrial({ extra: '0' }).filled.includes('extra'));
+for (const bad of ['-1', '501', '1.5', '1e2', '재고', ' ']) {
+  assert.equal(prepareTrial({ capacity1: bad }).errorKey, 'capacity1');
+}
+assert.equal(prepareTrial({ demand1: '0' }).errorKey, 'demand1');
+assert.equal(runTrial(defaults).stages.length, 4);
+console.log('PASS blank defaults, explicit zero, invalid quantities and execution trace');

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { defaults, generateTrial, runGoldenTrials, runTrial } from './bid-trial.mjs';
+import { defaults, generateTrial, prepareTrial, runGoldenTrials, runTrial } from './bid-trial.mjs';
 
 const fields = [
   ['capacity1', '기초 공급능력'], ['capacity2', '더마 공급능력'],
@@ -8,7 +8,8 @@ const fields = [
   ['extra', 'C-101 추가 더마 주문'], ['shipping', '공동 출고 한도'], ['booked', '기존 출고 예약'],
   ['expansion', '더마 증설량'],
 ];
-const initial = { ...defaults };
+const initial = Object.fromEntries(Object.keys(defaults).map((key) => [key, '']));
+const fieldName = (key) => fields.find(([name]) => name === key)?.[1] ?? '증설 가동일';
 
 export function BidTrial() {
   const [seed, setSeed] = useState('');
@@ -19,11 +20,26 @@ export function BidTrial() {
   const [golden, setGolden] = useState(null);
   const [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
+  const [filled, setFilled] = useState([]);
+  const [invalid, setInvalid] = useState(null);
 
   function calculate(values, generated) {
     setError('');
+    setInvalid(null);
+    const prepared = prepareTrial(values);
+    if (prepared.errorKey) {
+      setInvalid(prepared.errorKey);
+      setResult(null);
+      setError(`${fieldName(prepared.errorKey)} 값을 확인하세요. 수량은 0~500 EA 정수이며 신규 요청은 1 EA 이상입니다.`);
+      requestAnimationFrame(() => {
+        const field = document.getElementById(`trial-${prepared.errorKey}`);
+        if (field) { field.closest('details').open = true; field.focus(); }
+      });
+      return;
+    }
     try {
-      const next = runTrial(values);
+      const next = runTrial(prepared.values);
+      setFilled(prepared.filled);
       setResult(next);
       setDirty(false);
       if (generated) setBaseline(next);
@@ -56,6 +72,7 @@ export function BidTrial() {
     setInput((previous) => ({ ...previous, [key]: value }));
     setDirty(true);
     setError('');
+    setInvalid(null);
   }
 
   return <div className="analysis-panel trial-panel">
@@ -63,6 +80,7 @@ export function BidTrial() {
     <p>모의 입찰서에서 조건을 추출하고 실제 공급계획 계산과 납품표 검증을 실행합니다. 승인·제출 기록에는 반영되지 않습니다.</p>
     <div className="trial-actions">
       <button type="button" onClick={randomize}>새 랜덤 입찰 실행</button>
+      <button type="button" className="secondary" onClick={() => calculate(input, false)}>테스트 진행하기</button>
       <form onSubmit={(event) => { event.preventDefault(); replay(seed); }}>
         <label>재현 번호<input value={seed} onChange={(event) => setSeed(event.target.value)} inputMode="numeric" maxLength={10} /></label>
         <button className="secondary" type="submit">같은 입력 재현</button>
@@ -71,18 +89,22 @@ export function BidTrial() {
     <form onSubmit={(event) => { event.preventDefault(); calculate(input, false); }}>
       <details className="disclosure-panel"><summary>생성된 입력 확인·수정</summary>
         <div className="scenario-inputs">{fields.map(([key,label]) => <label key={key}>{label} (EA)
-          <input type="number" min={key.startsWith('demand') ? 1 : 0} max="500" step="1" required value={input[key]}
-            onChange={(event) => edit(key,event.target.value === '' ? '' : Number(event.target.value))} /></label>)}
-        <label>증설 가동일<select value={input.start} onChange={(event) => edit('start',event.target.value)}>
+          <input id={`trial-${key}`} type="text" inputMode="numeric" aria-invalid={invalid === key} value={input[key]} placeholder={String(defaults[key])}
+            onChange={(event) => edit(key,event.target.value)} /></label>)}
+        <label>증설 가동일<select id="trial-start" value={input.start} onChange={(event) => edit('start',event.target.value)}>
+          <option value="">기본값 · 납품일</option>
           <option value="2026-08-02">2026-08-02 · 납품일</option><option value="2026-08-03">2026-08-03 · 납품 이후</option>
         </select></label></div>
         <button type="submit">수정한 조건 다시 계산</button>
-        <p className="supply-note">재현 번호는 처음 생성된 입력을 복원합니다. 직접 수정한 값은 재현 번호에 포함되지 않습니다.</p>
+        <p className="supply-note">빈 칸만 기본값으로 계산합니다. 입력한 0은 그대로 사용합니다. 재현 번호는 처음 생성된 입력을 복원합니다.</p>
       </details>
     </form>
     {error && <p role="alert">{error}</p>}
     {dirty && <p role="status">입력 수정됨 · 다시 계산해야 현재 결과를 확인할 수 있습니다.</p>}
     {result && !dirty && <div className="trial-results">
+      <h3>이번 테스트 실행 내역</h3>
+      <ol className="trial-execution">{result.stages.map(([label, detail]) => <li key={label}><strong>{label}</strong><span>{detail}</span></li>)}</ol>
+      <p className="supply-note">{filled.length ? `기본값 적용 · ${filled.map((key) => `${fieldName(key)} ${defaults[key]}`).join(' · ')}` : '입력한 값으로 계산했습니다.'}</p>
       <h3>{result.action}</h3>
       <p>{runSeed !== null && `원본 재현 번호 ${runSeed} · `}납품일 2026-08-02 · 증설 반영 {result.expansion} EA · 품목 순서대로 공동 출고 한도를 배정합니다.</p>
       <div className="table-scroll"><table>

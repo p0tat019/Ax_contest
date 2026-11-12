@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
     <link rel="stylesheet" href="./intake.css">
-    <link rel="stylesheet" href="./workspace.css?v=hands-on-demo-1">
-    <script type="module" src="./workspace.js?v=hands-on-demo-1"></script>
-    <script type="module" src="./intake.mjs?v=hands-on-demo-1"></script>
+    <link rel="stylesheet" href="./workspace.css?v=action-check-1">
+    <script type="module" src="./workspace.js?v=action-check-1"></script>
+    <script type="module" src="./intake.mjs?v=action-check-1"></script>
     <script type="module" src="./assistant.mjs?v=hands-on-demo-1"></script>
   </head>
   <body data-workspace="dashboard">
@@ -63,7 +63,7 @@
       <section id="intake-request" data-view="intake">
         <div class="section-heading">
           <h2>입찰 요청</h2>
-          <button type="button" id="example" class="secondary">C-201 예시 불러오기</button>
+          <button type="button" id="example" class="secondary" disabled>C-201 예시 불러오기</button>
         </div>
         <div id="intake-screening" class="next-work" hidden>
           <strong>대시보드에서 넘긴 1차 판단</strong>
@@ -74,7 +74,7 @@
         <div id="hands-on-intake"></div>
         <textarea id="request" rows="7" placeholder="고객, 품목, 물량, 일정과 계약 조건을 붙여 넣으세요."></textarea>
         <p>예시는 편집 중인 요청과 추출 초안을 바꿉니다. 저장된 검수는 새로 저장할 때 갱신됩니다.</p>
-        <button type="button" id="extract">조건 추출·내부 자료 조회</button>
+        <button type="button" id="extract" disabled>조건 추출·내부 자료 조회</button>
         <p>요청서 항목과 내부 자료를 조회합니다. 담당자가 납품표를 바이어 회신과 대조한 뒤 검수 결정을 저장하세요.</p>
         <p id="notice" role="status"></p>
       </section>
@@ -109,6 +109,7 @@
             <legend>바이어 납품표와 증빙</legend>
             <p id="buyer-change-context" role="status" hidden></p>
             <button type="button" class="secondary" id="hands-on-buyer-evidence" hidden>체험용 납품표·증빙 채우기</button>
+            <p id="buyer-change-fill-status" role="status" hidden></p>
             <div id="buyer-change-fields" class="fields"></div>
             <a href="#reviewer" id="buyer-change-decision" hidden>영업 검수 결정으로 이동 →</a>
           </fieldset>
@@ -236,6 +237,7 @@
           <textarea id="reply-content" rows="3" required></textarea>
           <button type="button" class="secondary" id="experience-buyer-change" hidden>체험용 변경 회신 채우기</button>
           <button type="submit">바이어 회신 기록</button>
+          <p id="reply-fill-status" role="status" hidden></p>
         </form>
         <details class="history-panel">
           <summary>처리 이력</summary>

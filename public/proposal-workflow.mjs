@@ -81,6 +81,7 @@ export function setWorkflowReview(plan, departments = [], reopen) {
     approval = submitted = reply = null;
     approvalForm.reset();
     replyForm.reset();
+    byId('reply-fill-status').hidden = true;
     notice.textContent = '';
     reviewKey = key;
     if (plan && restored) {
@@ -262,7 +263,12 @@ byId('proposal-submit').addEventListener('click', () => {
 byId('experience-buyer-change').addEventListener('click', () => {
   if (!changeExperience || !submitted) return;
   byId('reply-type').value = 'change';
-  byId('reply-content').value = '체험용 변경 회신 SIM-BUYER-002. 수출 예약이 54,000 EA로 늘어, 2026-08-02 기초 1,500 EA·더마 500 EA로 조정하는 데 동의합니다. 물류 회신 SIM-LOG-002를 확인하세요.';
+  const content = byId('reply-content');
+  content.value = '체험용 변경 회신 SIM-BUYER-002. 수출 예약이 54,000 EA로 늘어, 2026-08-02 기초 1,500 EA·더마 500 EA로 조정하는 데 동의합니다. 물류 회신 SIM-LOG-002를 확인하세요.';
+  const status = byId('reply-fill-status');
+  status.textContent = '회신 유형과 내용을 채웠습니다. 확인한 뒤 바이어 회신 기록을 누르세요.';
+  status.hidden = false;
+  content.focus();
 });
 
 replyForm.addEventListener('submit', (event) => {
@@ -277,6 +283,7 @@ replyForm.addEventListener('submit', (event) => {
     return;
   }
   reply = { owner, deadline, type, content };
+  byId('reply-fill-status').hidden = true;
   record(`공급안 ${submitted.version} · 바이어 ${type === 'change' ? '조건 변경 요청' : '접수 확인'} · ${content} · ${owner} · ${deadline}`);
   notice.textContent = '';
   if (type === 'change') {

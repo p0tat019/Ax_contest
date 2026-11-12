@@ -56,12 +56,24 @@ function useWorkflow() {
 function Workspace() {
   const [view, setView] = useState(viewForHash);
   const [anchor, setAnchor] = useState(hash);
+  const [intakeStatus, setIntakeStatus] = useState(() => byId('review-form').dataset.ready ? 'ready' : 'loading');
+  const intakeReady = intakeStatus === 'ready';
   const workflow = useWorkflow();
   const dialog = byId('assistant-panel');
   const openAssistant = (area) => {
     byId('assistant-context').textContent = area;
     if (!dialog.open) dialog.showModal();
   };
+  useEffect(() => {
+    const ready = () => setIntakeStatus('ready');
+    const timer = window.setTimeout(() => setIntakeStatus((status) => status === 'loading' ? 'delayed' : status), 8000);
+    document.addEventListener('corevia:intake-ready', ready);
+    if (byId('review-form').dataset.ready) ready();
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('corevia:intake-ready', ready);
+    };
+  }, []);
   useEffect(() => {
     const update = () => {
       if (hash() === 'assistant-heading' || hash() === 'assistant') {
@@ -133,17 +145,21 @@ function Workspace() {
       <a href="?#dashboard-heading">일반 검토로 돌아가기</a>
     </div> : null)}
     {portal('hands-on-intake', handsOnExperience ? <div className="hands-on-input">
-      <button type="button" className="secondary" onClick={() => sample(true)}>체험용 입찰서 채우기</button>
-      <small>채운 값은 수정할 수 있습니다. 조건 추출을 눌러 처리하세요.</small>
+      <button type="button" className="secondary" disabled={!intakeReady} onClick={() => sample(true)}>체험용 입찰서 채우기</button>
+      <small role="status">{intakeReady ? '채운 값은 수정할 수 있습니다. 조건 추출을 눌러 처리하세요.'
+        : intakeStatus === 'delayed' ? '입력 화면 연결이 지연되고 있습니다. 계속 지연되면 이 페이지를 새로고침하세요.' : '입력 화면을 준비하고 있습니다.'}</small>
     </div> : null)}
     {portal('start-options', !workflow.record && <div className="guide-strip">
       <div><strong>어떤 방식으로 시작하시겠어요?</strong><p>체험 기록은 이 탭에만 저장됩니다.</p></div>
-      {experienceMode ? <a className="primary-link" href="#intake-request" onClick={() => sample(handsOnExperience)}>모의 자료 불러오기</a>
+      {experienceMode ? <button type="button" disabled={!intakeReady} onClick={() => {
+        sample(handsOnExperience);
+        location.hash = 'intake-request';
+      }}>모의 자료 불러오기</button>
         : <><a className="primary-link" href="?experience=1#dashboard-heading">예시 데이터로 5분 체험</a><a href="#intake-request">내 입찰 자료로 시작</a></>}
     </div>)}
     {portal('decision-overview', <DecisionOverview {...workflow} />)}
     {portal('trial-heading', <BidTrial />)}
-    {portal('supply-overview', <SupplyOverview />)}
+    {portal('supply-overview', <SupplyOverview intakeReady={intakeReady} />)}
     {portal('customer-trends', <CustomerTrends />)}
     {portal('production-overview', <ProductionOverview plans={workflow.plans} />)}
     {portal('scenario-view', <ScenarioLab />)}

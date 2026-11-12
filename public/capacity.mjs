@@ -1,7 +1,7 @@
 import { capacityTrace, compareCapacity, deliveryWeek, readQuantity, shippingRecords, verifyShippingEvidence } from './capacity-plan.mjs';
 import { deliverySchedule } from './proposal-checks.mjs';
 import { scenarios } from './capacity-scenarios.mjs';
-import { setReviewPlan } from './department-review.mjs?v=hands-on-demo-1';
+import { setReviewPlan } from './department-review.mjs?v=action-check-1';
 import { changeExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 
 const byId = (id) => document.getElementById(id);
@@ -263,16 +263,17 @@ form.addEventListener('input', saveDraft);
 
 byId('experience-shipping-change').addEventListener('click', () => {
   if (!changeExperience || !intake?.buyerChangeId) return;
-  const lines = shippingInput.value.split('\n');
-  const index = lines.findIndex((line) => line.trim().startsWith('2026-07-27 |'));
-  if (index < 0) {
-    status.textContent = '먼저 확정 납품표와 대시보드 근거를 불러오세요.';
-    return;
+  const entries = shippingInput.value.split('\n');
+  const index = entries.findIndex((entry) => entry.split('|', 1)[0].trim() === '2026-07-27');
+  const sample = '2026-07-27 | 56000 | 54000 | 체험용 물류 회신 SIM-LOG-002';
+  if (entries[index] !== sample) {
+    if (index >= 0) entries[index] = sample;
+    else entries.push(sample);
+    shippingInput.value = entries.filter((entry) => entry.trim()).join('\n');
+    saveDraft();
   }
-  lines[index] = '2026-07-27 | 56000 | 54000 | 체험용 물류 회신 SIM-LOG-002';
-  shippingInput.value = lines.join('\n');
-  saveDraft();
   status.textContent = '체험용 물류 회신을 채웠습니다. 공급 가능량 계산으로 새 공급안을 검증하세요.';
+  shippingInput.focus();
 });
 
 byId('capacity-example').addEventListener('click', () => {

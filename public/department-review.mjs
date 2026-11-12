@@ -1,6 +1,6 @@
 import { requestFeedback } from './ai-client.mjs';
 import { supplyChecks } from './capacity-plan.mjs?v=followup-demo-1';
-import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=hands-on-demo-1';
+import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=action-check-1';
 import { loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 
 const byId = (id) => document.getElementById(id);
@@ -213,7 +213,7 @@ form.addEventListener('submit', (event) => {
 
 byId('department-edit').addEventListener('click', () => {
   const index = Number(feedbackRow.value);
-  window.location.hash = 'capacity';
+  window.location.hash = 'capacity-entry';
   window.requestAnimationFrame(() => window.requestAnimationFrame(() => editRow?.(index)));
 });
 

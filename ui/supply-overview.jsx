@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { assessBid, bids, freeShipping, freeSupply, weeks } from './supply-overview-data.mjs';
 import { loadState, saveState } from '../public/workflow-storage.mjs';
+import { readQuantity } from '../public/capacity-plan.mjs';
 
 const number = new Intl.NumberFormat('ko-KR');
 const quantity = (value) => value === null ? '미확인' : number.format(value);
@@ -14,8 +15,12 @@ function BidEntry({ queue, onAdd }) {
     const form = event.currentTarget;
     const fields = new FormData(form);
     const id = fields.get('customer').trim().toUpperCase();
-    const demand = Object.fromEntries(['PL-01', 'PL-02'].map((code) => [code, Number(fields.get(code))])
-      .filter(([, value]) => value > 0));
+    const quantities = ['PL-01', 'PL-02'].map((code) => [code, readQuantity(fields.get(code))]);
+    if (quantities.some(([, value]) => value !== null && (!Number.isSafeInteger(value) || value > 999999999))) {
+      setNotice('비교 물량을 0~999,999,999 사이의 정수로 입력하세요.');
+      return;
+    }
+    const demand = Object.fromEntries(quantities.filter(([, value]) => value > 0));
     if (!/^C-\d{3}$/.test(id) || !Object.keys(demand).length) {
       setNotice('고객 코드와 최소 한 품목의 비교 물량을 입력하세요.');
       return;
@@ -47,8 +52,8 @@ function BidEntry({ queue, onAdd }) {
         <label>고객 코드<input name="customer" placeholder="C-204" maxLength={5} required /></label>
         <label>입찰 제목<input name="title" maxLength={80} required /></label>
         <label>출고 경로<select name="route"><option>국내 출고</option><option>수출 출고</option></select></label>
-        <label>PL-01 비교 물량 (EA)<input name="PL-01" type="number" min="0" max="999999999" step="1" /></label>
-        <label>PL-02 비교 물량 (EA)<input name="PL-02" type="number" min="0" max="999999999" step="1" /></label>
+        <label>PL-01 비교 물량 (EA)<input name="PL-01" inputMode="numeric" maxLength={9} /></label>
+        <label>PL-02 비교 물량 (EA)<input name="PL-02" inputMode="numeric" maxLength={9} /></label>
       </div>
       <label>RFP 원문 또는 추가 조건<textarea name="source" rows="3" maxLength={12000} /></label>
       <button type="submit">대기열에 추가</button>
@@ -72,7 +77,7 @@ function SupplyTable({ title, headers, rows }) {
   </div>;
 }
 
-export function SupplyOverview() {
+export function SupplyOverview({ intakeReady }) {
   const [extraBids, setExtraBids] = useState(() => loadState('bid-queue') ?? []);
   const [weekIndex, setWeekIndex] = useState(0);
   const [bidId, setBidId] = useState(bids[0].id);
@@ -148,9 +153,9 @@ export function SupplyOverview() {
       <p className="supply-note">각 입찰은 기존 약속을 먼저 차감해 개별 검토합니다. 여기서는 수량이 예약되지 않습니다.</p>
       {handoff ? <div className="bid-handoff">
         <p>현재 편집 중인 접수 초안을 선택한 입찰로 바꿉니다. 저장된 검수 기록은 접수 화면에서 새 검수 결과를 저장할 때 갱신됩니다.</p>
-        <button type="button" onClick={openIntake}>선택한 입찰 불러오기</button>
+        <button type="button" disabled={!intakeReady} onClick={openIntake}>선택한 입찰 불러오기</button>
         <button type="button" className="secondary" onClick={() => setHandoff(false)}>취소</button>
-      </div> : <button type="button" onClick={() => {
+      </div> : <button type="button" disabled={!intakeReady} onClick={() => {
         const current = document.getElementById('request').value;
         if (current && current !== bid.source) setHandoff(true);
         else openIntake();

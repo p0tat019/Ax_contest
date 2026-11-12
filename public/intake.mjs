@@ -1,7 +1,7 @@
 import { example, extractConditions, fields, pendingTasks } from './intake-rules.mjs';
 import { lookupEvidence } from './intake-lookup.mjs';
-import { setCapacityIntake } from './capacity.mjs?v=hands-on-demo-1';
-import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=hands-on-demo-1';
+import { setCapacityIntake } from './capacity.mjs?v=action-check-1';
+import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=action-check-1';
 import { experienceMode, handsOnExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 import { deliverySchedule } from './proposal-checks.mjs';
 
@@ -313,6 +313,7 @@ function renderBuyerChange() {
   context.hidden = !pending;
   byId('buyer-change-decision').hidden = !pending;
   byId('hands-on-buyer-evidence').hidden = !pending || !handsOnExperience;
+  byId('buyer-change-fill-status').hidden = true;
   context.textContent = pending
     ? `${pending.owner} · ${pending.deadline}까지 확인 · ${pending.content} · 아래 납품표와 새 증빙을 확인한 뒤 영업 검수를 저장하세요.`
     : '';
@@ -324,6 +325,9 @@ byId('hands-on-buyer-evidence').addEventListener('click', () => {
   const proof = inputs.get('deliveryEvidence');
   proof.value = 'SIM-BUYER-002 · 모의 바이어 감량 동의 회신';
   proof.dispatchEvent(new Event('input', { bubbles: true }));
+  const status = byId('buyer-change-fill-status');
+  status.textContent = '납품표와 새 증빙을 채웠습니다. 값을 확인한 뒤 영업 검수를 저장하세요.';
+  status.hidden = false;
   inputs.get('deliverySchedule').focus();
 });
 
@@ -504,4 +508,6 @@ byId('review-form').addEventListener('submit', (event) => {
 });
 
 byId('review-form').dataset.ready = 'true';
+byId('example').disabled = false;
+byId('extract').disabled = false;
 document.dispatchEvent(new Event('corevia:intake-ready'));

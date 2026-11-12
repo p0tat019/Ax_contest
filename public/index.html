@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
     <link rel="stylesheet" href="./intake.css">
-    <link rel="stylesheet" href="./workspace.css?v=dashboard-demo-1">
-    <script type="module" src="./workspace.js?v=dashboard-demo-1"></script>
-    <script type="module" src="./intake.mjs"></script>
-    <script type="module" src="./assistant.mjs"></script>
+    <link rel="stylesheet" href="./workspace.css?v=buyer-followup-1">
+    <script type="module" src="./workspace.js?v=buyer-followup-1"></script>
+    <script type="module" src="./intake.mjs?v=buyer-followup-1"></script>
+    <script type="module" src="./assistant.mjs?v=buyer-followup-1"></script>
   </head>
   <body data-workspace="dashboard">
     <div id="workspace-root"></div>
@@ -19,6 +19,8 @@
         <div class="guide-strip">
           <div><strong>모의 입찰 테스트</strong><p>자료 입력 없이 입찰 접수부터 공급안 검증까지 4단계로 확인하세요.</p></div>
           <button id="dashboard-trial-start" type="button" aria-haspopup="dialog" disabled>테스트 진행하기</button>
+          <a href="?experience=1&amp;case=normal#intake-request">정상 제출 체험</a>
+          <a href="?experience=1&amp;case=change#intake-request">조건 변경·재검수 체험</a>
           <a href="#trial-heading">랜덤 조건·직접 입력 →</a>
         </div>
       </section>
@@ -101,6 +103,12 @@
         </div>
         <form id="review-form">
           <h3>공급 조건 확인 및 수정</h3>
+          <fieldset id="buyer-change-edit" class="buyer-change-edit">
+            <legend>바이어 납품표와 증빙</legend>
+            <p id="buyer-change-context" role="status" hidden></p>
+            <div id="buyer-change-fields" class="fields"></div>
+            <a href="#reviewer" id="buyer-change-decision" hidden>영업 검수 결정으로 이동 →</a>
+          </fieldset>
           <div id="fields" class="fields"></div>
           <div class="review-decision">
           <h3>영업 검수 결정</h3>
@@ -160,6 +168,7 @@
           <button type="button" class="secondary" id="capacity-add">주간 행 추가</button>
           <label for="capacity-shipping">납품 주간 물류 회신 · 경로별 출고 한도와 기존 예약 (EA)</label>
           <textarea id="capacity-shipping" rows="3" placeholder="2026-07-27 | 56000 | 40000 | 수출 물류 회신 번호"></textarea>
+          <button type="button" class="secondary" id="experience-shipping-change" hidden>체험용 새 물류 회신 채우기</button>
           <p>한 주에 한 줄씩, 월요일 | 처리 한도 | 예약 물량 | 회신 근거를 기록하세요. 같은 주의 품목은 출고 여력을 함께 사용합니다.</p>
           <button type="submit">공급 가능량 계산</button>
           <p id="capacity-status" role="status"></p>
@@ -222,6 +231,7 @@
           </select>
           <label for="reply-content">모의 회신 내용</label>
           <textarea id="reply-content" rows="3" required></textarea>
+          <button type="button" class="secondary" id="experience-buyer-change" hidden>체험용 변경 회신 채우기</button>
           <button type="submit">바이어 회신 기록</button>
         </form>
         <details class="history-panel">
@@ -235,6 +245,11 @@
         <div id="department-review-content" hidden>
         <p id="department-status" role="status"></p>
         <ul id="department-decisions"></ul>
+        <section id="supply-checks" class="supply-checks" hidden>
+          <h3>공급 제약 확인 작업</h3>
+          <p>공급안 버전별 작업입니다. 확인 근거를 남긴 뒤 수량이나 납기가 달라지면 생산계획을 다시 계산하세요.</p>
+          <div id="supply-check-list"></div>
+        </section>
         <form id="department-form">
           <div class="fields">
             <div>
@@ -251,6 +266,11 @@
           </div>
           <label for="department-feedback">회신 내용</label>
           <textarea id="department-feedback" rows="3" placeholder="조건부 수락, 보완 요청, 반려 시 근거와 변경 요청을 입력하세요."></textarea>
+          <div id="department-closure" hidden>
+            <p id="department-closure-context"></p>
+            <label for="department-closure-evidence">보완을 닫은 근거</label>
+            <textarea id="department-closure-evidence" rows="2" maxlength="1000" placeholder="확인한 문서·회신과 그 결과를 기록하세요."></textarea>
+          </div>
           <button type="submit">부서 결정 저장</button>
           <p id="department-notice" role="status"></p>
         </form>

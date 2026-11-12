@@ -1,7 +1,8 @@
-export const experienceMode = typeof location !== 'undefined'
-  && new URLSearchParams(location.search).get('experience') === '1';
+const parameters = new URLSearchParams(typeof location === 'undefined' ? '' : location.search);
+export const experienceMode = parameters.get('experience') === '1';
+export const changeExperience = experienceMode && parameters.get('case') === 'change';
 const storage = () => experienceMode ? sessionStorage : localStorage;
-const storageKey = (key) => `corevia.${experienceMode ? 'experience.' : ''}${key}.v1`;
+const storageKey = (key) => `corevia.${changeExperience ? 'experience.change.' : experienceMode ? 'experience.' : ''}${key}.v1`;
 
 export function loadState(key) {
   try {

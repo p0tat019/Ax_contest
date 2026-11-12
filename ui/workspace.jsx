@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
-import { experienceMode, loadState } from '../public/workflow-storage.mjs';
+import { changeExperience, experienceMode, loadState } from '../public/workflow-storage.mjs';
 import { bids, weeks } from './supply-overview-data.mjs';
 import { CustomerTrends, DecisionOverview, ProductionOverview, ScenarioLab } from './decision-views.jsx';
 import { SupplyOverview } from './supply-overview.jsx';
@@ -15,7 +15,7 @@ const pages = [
   ['scenario', '시나리오 분석', 'scenario-heading', '◈'],
   ['proposal', '검수·승인', 'proposal-workflow', '✓'],
 ];
-const aliases = { review: 'intake', reviewer: 'intake', result: 'intake', 'intake-request': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
+const aliases = { review: 'intake', reviewer: 'intake', result: 'intake', 'intake-request': 'intake', 'buyer-change-edit': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
   'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal', 'proposal-document': 'proposal',
   'buyer-reply-form': 'proposal', 'trial-heading': 'scenario' };
 const byId = (id) => document.getElementById(id);
@@ -92,6 +92,13 @@ function Workspace() {
       context: { customer: bid.id, route: bid.route, selectedWeek: weeks[0].start, weeks },
     } }));
   };
+  useEffect(() => {
+    if (!experienceMode || !['normal', 'change'].includes(new URLSearchParams(location.search).get('case'))
+      || hash() !== 'intake-request' || loadState('intake')) return;
+    if (byId('review-form').dataset.ready) sample();
+    else document.addEventListener('corevia:intake-ready', sample, { once: true });
+    return () => document.removeEventListener('corevia:intake-ready', sample);
+  }, []);
   return <>
     {portal('workspace-nav', <>
       <a className="workspace-brand" href="#dashboard-heading"><span className="brand-mark" aria-hidden="true">C</span><span><strong>Corevia</strong><small>약속계획</small></span></a>
@@ -109,9 +116,11 @@ function Workspace() {
     </div>)}
     {portal('workflow-map', <WorkflowMap workflow={workflow} view={view} anchor={anchor} />)}
     {portal('experience-guide', experienceMode ? <div className="guide-strip">
-      <div><strong>5분 체험</strong><p>{view === 'intake' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
+      <div><strong>{changeExperience ? '조건 변경·재검수 체험' : '정상 제출 체험'}</strong><p>{view === 'intake' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
         : view === 'capacity' ? '확정 납품표를 불러와 계산하고 제품 행의 계산 근거를 확인하세요.'
-          : view === 'proposal' ? '세 부서가 같은 버전을 수락한 뒤 참여 승인과 모의 제출을 기록하세요.'
+          : view === 'proposal' ? changeExperience && workflow.submitted
+            ? '모의 바이어 변경 회신을 채워 저장한 뒤, 바뀐 납품표와 증빙을 확인하세요.'
+            : '세 부서가 같은 버전을 수락한 뒤 참여 승인과 모의 제출을 기록하세요.'
             : '모의 자료로 시작해 계산 근거를 확인하고 승인까지 체험하세요.'}</p></div>
       <a href="?#dashboard-heading">일반 검토로 돌아가기</a>
     </div> : null)}
@@ -139,7 +148,7 @@ function WorkflowMap({ workflow, view, anchor }) {
     ['모의 제출·회신', '#proposal-document', replied],
   ];
   const destination = steps.findIndex(([, target]) => target === href
-    || (target === '#intake-request' && href === '#review')
+    || (target === '#intake-request' && ['#review', '#buyer-change-edit'].includes(href))
     || (target === '#proposal-document' && href === '#buyer-reply-form'));
   const destinationLabel = steps[destination]?.[0] ?? '다음 작업';
   const returnRequired = outcome === 'return';

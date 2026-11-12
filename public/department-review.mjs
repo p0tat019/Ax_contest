@@ -1,4 +1,7 @@
 import { requestFeedback } from './ai-client.mjs';
+import { capacityTrace, deliveryWeek } from './capacity-plan.mjs';
+import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=buyer-followup-1';
+import { loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
 
 const byId = (id) => document.getElementById(id);
 const section = byId('department-review-content');
@@ -16,6 +19,79 @@ const applyButton = byId('feedback-apply');
 
 function persistReview() {
   saveState('department', { ...latest, reviews: [...latest.reviews] });
+}
+
+function supplyChecks(plans) {
+  return plans.flatMap((row) => {
+    const { production } = capacityTrace(row, plans);
+    const checks = [];
+    if (row.revised.existingShortage > 0 || production < row.requested) {
+      checks.push(['조달', row.week, '원자재 입고일과 생산 가능 수량 확인'],
+        ['품질', row.week, '검사 대기·보류 수량과 출고 승인 예정일 확인']);
+    }
+    if (!row.shipping || row.shipping.restricted > 0 || row.shipping.shortage > 0) {
+      const reason = row.shipping?.restricted > 0 ? `출고 한도로 신규 배정 ${row.shipping.restricted.toLocaleString('ko-KR')} EA 감소 · ` : '';
+      checks.push(['물류', deliveryWeek(row.deliveryDate) || row.week, `${reason}확정 예약과 추가 출고 가능량 확인`]);
+    }
+    return checks.map(([owner, week, task]) => ({ owner, week, product: row.product, task }));
+  });
+}
+
+function renderSupplyChecks() {
+  const plan = active;
+  byId('supply-checks').hidden = !plan.checks.length;
+  const items = plan.checks.map((check, index) => {
+    const item = document.createElement('article');
+    const heading = document.createElement('h4');
+    heading.textContent = `${check.week} 주차 · ${check.product} · ${check.owner}`;
+    const detail = document.createElement('p');
+    detail.textContent = check.task;
+    item.append(heading, detail);
+    if (check.evidence) {
+      const result = document.createElement('p');
+      result.textContent = `확인 완료 · ${check.person} · ${check.evidence}`;
+      item.append(result);
+      return item;
+    }
+    const form = document.createElement('form');
+    const inputs = ['확인 담당자', '근거 및 확인 결과'].map((text) => {
+      const label = document.createElement('label');
+      label.textContent = text;
+      const input = document.createElement('input');
+      input.required = true;
+      input.maxLength = text === '확인 담당자' ? 80 : 500;
+      label.append(input);
+      form.append(label);
+      return input;
+    });
+    const button = document.createElement('button');
+    button.type = 'submit';
+    button.textContent = '확인 완료 기록';
+    const status = document.createElement('p');
+    status.setAttribute('role', 'status');
+    form.append(button, status);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (active !== plan) return;
+      const [person, evidence] = inputs.map((input) => input.value.trim());
+      if (!person || !evidence) {
+        status.textContent = '담당자와 확인 근거를 입력하세요.';
+        return;
+      }
+      const resolved = { ...check, person, evidence };
+      const checks = plan.checks.map((entry, position) => position === index ? resolved : entry);
+      if (!saveState('department', { ...latest, checks, reviews: [...latest.reviews] })) {
+        status.textContent = '확인 근거를 저장하지 못했습니다.';
+        return;
+      }
+      plan.checks = checks;
+      recordSupplyCheck(plan.version, resolved);
+      renderReview();
+    });
+    item.append(form);
+    return item;
+  });
+  byId('supply-check-list').replaceChildren(...items);
 }
 
 export function setReviewPlan(plan, onEditRow, edited = false) {
@@ -38,11 +114,12 @@ export function setReviewPlan(plan, onEditRow, edited = false) {
   }
   const signature = JSON.stringify(plan);
   if (latest?.signature !== signature) {
-    latest = { signature, version: (latest?.version ?? 0) + 1, reviews: new Map(), ...plan };
+    latest = { signature, version: (latest?.version ?? 0) + 1, reviews: new Map(), checks: supplyChecks(plan.plans), ...plan };
     form.reset();
     persistReview();
   }
   active = latest;
+  active.checks ??= supplyChecks(active.plans);
   feedbackRow.replaceChildren(...active.plans.map((row, index) =>
     new Option(`${row.week} · ${row.product} · ${row.plant}/${row.line}`, index)));
   renderReview();
@@ -57,7 +134,7 @@ function renderReview() {
     const item = document.createElement('li');
     const review = active.reviews.get(role);
     item.textContent = review
-      ? `${role} · ${review.person} · ${decisions[review.decision]}${review.feedback ? ` · ${review.feedback}` : ''}`
+      ? `${role} · ${review.person} · ${decisions[review.decision]}${review.feedback ? ` · ${review.feedback}` : ''}${review.closure ? ` · 보완 종료 근거 ${review.closure.evidence}` : ''}`
       : `${role} · 검수 대기`;
     list.append(item);
   }
@@ -82,6 +159,8 @@ function renderReview() {
     next.push('세 부서가 같은 공급안 버전을 수락했습니다.');
   }
   byId('department-next').textContent = next.join(' ');
+  renderSupplyChecks();
+  updateClosureField();
   const prices = { 'PL-01': 11.8, 'PL-02': 15.8 };
   const reference = active.customer?.toUpperCase() === 'C-201' && active.plans.every((row) => prices[row.product]);
   const revenue = (key) => Math.round(active.plans.reduce((sum, row) =>
@@ -94,6 +173,21 @@ function renderReview() {
     active.reviews.clear();
     persistReview();
     renderReview();
+  });
+}
+
+function updateClosureField() {
+  const previous = active?.reviews.get(byId('department-role').value);
+  const required = Boolean(previous && previous.decision !== 'accepted' && byId('department-decision').value === 'accepted');
+  byId('department-closure').hidden = !required;
+  byId('department-closure-evidence').required = required;
+  byId('department-closure-context').textContent = required ? `이 버전의 보완 사유 · ${previous.feedback}` : '';
+}
+
+for (const id of ['department-role', 'department-decision']) {
+  byId(id).addEventListener('change', () => {
+    byId('department-closure-evidence').value = '';
+    updateClosureField();
   });
 }
 
@@ -113,11 +207,23 @@ form.addEventListener('submit', (event) => {
     notice.textContent = '검수 조건이나 보완·반려 사유를 입력하세요.';
     return;
   }
-  active.reviews.set(role, { person, decision, feedback });
+  const previous = active.reviews.get(role);
+  let closure;
+  if (decision === 'accepted' && previous && previous.decision !== 'accepted') {
+    const evidence = byId('department-closure-evidence').value.trim();
+    if (!evidence) {
+      notice.textContent = '보완을 닫은 근거를 입력하세요.';
+      byId('department-closure-evidence').focus();
+      return;
+    }
+    closure = { issue: previous.feedback, evidence };
+  } else if (decision === 'accepted') closure = previous?.closure;
+  active.reviews.set(role, { person, decision, feedback, ...(closure ? { closure } : {}) });
   persistReview();
-  recordDepartmentDecision(active.version, role, person, decisions[decision], feedback);
-  renderReview();
+  recordDepartmentDecision(active.version, role, person, decisions[decision],
+    [feedback, closure && `보완 사유 ${closure.issue} · 종료 근거 ${closure.evidence}`].filter(Boolean).join(' · '));
   form.reset();
+  renderReview();
   notice.textContent = `공급안 버전 ${active.version}의 ${role} 결정을 기록했습니다.`;
 });
 
@@ -173,5 +279,3 @@ applyButton.addEventListener('click', () => {
   const blocked = editRow?.(suggestion.index, suggestion);
   if (blocked) feedbackStatus.textContent = blocked;
 });
-import { setWorkflowReview, recordDepartmentDecision, buyerChangeFeedback } from './proposal-workflow.mjs';
-import { loadState, saveState } from './workflow-storage.mjs';

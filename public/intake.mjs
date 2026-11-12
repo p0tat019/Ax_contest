@@ -1,8 +1,8 @@
 import { example, extractConditions, fields, pendingTasks } from './intake-rules.mjs';
 import { lookupEvidence } from './intake-lookup.mjs';
-import { setCapacityIntake } from './capacity.mjs';
-import { setWorkflowIntake } from './proposal-workflow.mjs';
-import { experienceMode, loadState, saveState } from './workflow-storage.mjs';
+import { setCapacityIntake } from './capacity.mjs?v=buyer-followup-1';
+import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=buyer-followup-1';
+import { experienceMode, loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
 import { deliverySchedule } from './proposal-checks.mjs';
 
 const byId = (id) => document.getElementById(id);
@@ -161,7 +161,7 @@ for (const [key, name] of fields) {
   const field = document.createElement('div');
   field.className = 'condition-field';
   field.append(label, status);
-  byId('fields').append(field);
+  byId(['deliverySchedule', 'deliveryEvidence'].includes(key) ? 'buyer-change-fields' : 'fields').append(field);
   inputs.set(key, input);
   fieldStatuses.set(key, status);
 }
@@ -180,6 +180,7 @@ function showDraft(conditions) {
 function showResult(record) {
   setWorkflowIntake(record);
   setCapacityIntake(record);
+  renderBuyerChange();
   byId('result').hidden = false;
   byId('saved-conditions-heading').textContent = !record.decision || record.decision === 'accepted'
     ? '검수한 공급 조건' : '재검토할 공급 조건';
@@ -306,6 +307,25 @@ function showResult(record) {
 }
 
 let saved;
+function renderBuyerChange() {
+  const pending = pendingBuyerChange();
+  const context = byId('buyer-change-context');
+  context.hidden = !pending;
+  byId('buyer-change-decision').hidden = !pending;
+  context.textContent = pending
+    ? `${pending.owner} · ${pending.deadline}까지 확인 · ${pending.content} · 아래 납품표와 새 증빙을 확인한 뒤 영업 검수를 저장하세요.`
+    : '';
+}
+
+window.addEventListener('corevia:buyer-change', () => {
+  if (!saved) return;
+  if (request.value !== saved.source || review.hidden) {
+    request.value = saved.source;
+    supplyContext = saved.supplyContext;
+    showDraft(saved.conditions);
+  }
+  renderBuyerChange();
+});
 try {
   saved = loadState('intake');
   if (saved?.conditions && typeof saved.source === 'string') {
@@ -396,6 +416,8 @@ byId('review-form').addEventListener('submit', (event) => {
     return;
   }
   const conditions = readConditions();
+  const pending = request.value === saved?.source ? pendingBuyerChange() : null;
+  const acceptingChange = pending && decision.value === 'accepted';
   if (decision.value === 'accepted') {
     const field = !conditions.customer ? 'customer' : !evidence.lines?.length ? 'products' : null;
     if (field) {
@@ -412,6 +434,12 @@ byId('review-form').addEventListener('submit', (event) => {
     }
   }
   const previous = saved?.source === request.value ? saved.conditions : null;
+  if (acceptingChange && (!conditions.deliverySchedule || !conditions.deliveryEvidence
+    || conditions.deliveryEvidence === previous.deliveryEvidence)) {
+    saveNotice.textContent = '변경 회신을 닫으려면 확인된 납품표와 새 회신 증빙을 함께 입력하세요.';
+    inputs.get(conditions.deliverySchedule ? 'deliveryEvidence' : 'deliverySchedule').focus();
+    return;
+  }
   if (decision.value === 'accepted' && previous?.deliverySchedule && conditions.deliverySchedule
     && conditions.deliveryEvidence === previous.deliveryEvidence
     && ['deliverySchedule', 'firstDelivery', 'splitDelivery'].some((key) => conditions[key] !== previous[key])) {
@@ -434,6 +462,13 @@ byId('review-form').addEventListener('submit', (event) => {
     record.conditionEvidence = Object.fromEntries(Object.entries(saved.conditionEvidence ?? {})
       .filter(([key, proof]) => record.conditions[key] === proof.value));
   }
+  if (acceptingChange) {
+    record.buyerChangeId = pending.id ?? pending.content;
+    record.conditionEvidence.deliverySchedule = {
+      source: conditions.deliveryEvidence, owner: reviewer, reply: pending.content,
+      previous: previous.deliverySchedule || '미확인', value: conditions.deliverySchedule,
+    };
+  }
   try {
     if (!saveState('intake', record)) throw new Error();
   } catch {
@@ -447,3 +482,6 @@ byId('review-form').addEventListener('submit', (event) => {
   showResult(record);
   saveNotice.textContent = '검수한 공급 조건과 확인 작업을 이 브라우저에 저장했습니다.';
 });
+
+byId('review-form').dataset.ready = 'true';
+document.dispatchEvent(new Event('corevia:intake-ready'));

@@ -1,4 +1,5 @@
 import { dateKey, proposalIssues } from './proposal-checks.mjs';
+import { changeExperience, experienceMode, loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
 
 const byId = (id) => document.getElementById(id);
 const value = (id) => byId(id).value.trim();
@@ -19,6 +20,10 @@ let changeRequest;
 
 export function buyerChangeFeedback() {
   return changeRequest?.content ?? '';
+}
+
+export function pendingBuyerChange() {
+  return changeRequest ?? restored?.changeRequest;
 }
 
 function renderList(id, entries) {
@@ -42,10 +47,22 @@ export function recordDepartmentDecision(version, role, person, decision, feedba
   record(`공급안 ${version} · ${role} · ${person} · ${decision}${feedback ? ` · ${feedback}` : ''}`);
 }
 
+export function recordSupplyCheck(version, { week, product, owner, person, evidence }) {
+  record(`공급안 ${version} · ${week} ${product} · ${owner} ${person} 확인 완료 · ${evidence}`);
+}
+
 export function setWorkflowIntake(recordedIntake) {
+  const pending = pendingBuyerChange();
+  if (pending && (recordedIntake.buyerChangeId === (pending.id ?? pending.content)
+    || (pending.source && pending.source !== recordedIntake.source))) {
+    changeRequest = null;
+    if (restored) {
+      restored.changeRequest = null;
+      saveState('proposal', restored);
+    } else persistProposal();
+  }
   intake = recordedIntake;
   if (!history.some((entry) => entry.includes(` · 접수 검수 ${intake.version} ·`))) {
-    changeRequest = null;
     record(`접수 검수 ${intake.version} · ${intake.conditions.customer || '입찰 검토 건'} · ${intake.reviewer}`);
     for (const proof of Object.values(intake.conditionEvidence ?? {})) {
       record(`접수 검수 ${intake.version} · ${proof.previous} → ${proof.value} · ${proof.source} · ${proof.owner}`);
@@ -78,6 +95,7 @@ export function setWorkflowReview(plan, departments = [], reopen) {
 function blockReason() {
   if (!intake) return '영업 담당자가 입찰 요청을 접수하고 검수하세요.';
   if (intake.decision && intake.decision !== 'accepted') return '영업 검수에서 요청한 보완 사항을 확인하세요.';
+  if (pendingBuyerChange()) return '변경 회신의 납품표와 증빙을 확인하고 새 영업 검수를 저장하세요.';
   if (!review) return '모듈 2에서 공급안을 계산하세요.';
   if (review.needsRecalculation) return '바이어 조건 변경 · 모듈 2에서 수정안을 다시 계산하세요.';
   if (review.plans.some(({ revised }) => revised.existingShortage > 0)) return '기존 고객 납품 부족을 해소하고 다시 계산하세요.';
@@ -105,6 +123,13 @@ function render() {
     ['계약 위험', intake ? `결제 ${intake.conditions.payment || '미확인'} · 지연 페널티 ${intake.conditions.penalty || '미확인'} · 회수 비용 ${intake.conditions.recall || '미확인'}` : '입찰 요청서 확인 필요'],
     ['미해결 항목', issues.length ? issues.join(' · ') : blocked || '현재 승인 차단 항목 없음'],
     ['부서 검수', review ? roles.map((role) => `${role} ${review.reviews.get(role)?.decision === 'accepted' ? '수락' : '확인 필요'}`).join(' · ') : '검수 대기'],
+    ['부서 보완 종료 근거', review ? roles.flatMap((role) => {
+      const closure = review.reviews.get(role)?.closure;
+      return closure ? [`${role} · 보완 ${closure.issue} · 확인 ${closure.evidence}`] : [];
+    }).join(' / ') || '기록 없음' : '검수 대기'],
+    ['공급 제약 확인 작업', review?.checks?.length
+      ? review.checks.map((check) => `${check.week} ${check.owner} · ${check.evidence ? `${check.person} 확인 · ${check.evidence}` : '확인 대기'}`).join(' / ')
+      : '현재 공급안에서 생성된 작업 없음'],
   ];
   for (const [label, content] of facts) {
     const dt = document.createElement('dt');
@@ -119,6 +144,7 @@ function render() {
   byId('proposal-document').hidden = Boolean(blocked || approval?.decision !== 'approved');
   byId('proposal-submit').disabled = Boolean(submitted);
   replyForm.hidden = !submitted || reply?.type === 'change';
+  byId('experience-buyer-change').hidden = !changeExperience;
   byId('proposal-content').textContent = approval?.document ?? '';
   const evidence = byId('approval-evidence-list');
   byId('approval-evidence').open = Boolean(Object.keys(intake?.conditionEvidence ?? {}).length);
@@ -148,8 +174,9 @@ function render() {
     `부서 검수 · ${review ? [...review.reviews.values()].filter((entry) => entry.decision === 'accepted').length : 0}/3 수락`,
     `입찰 승인과 제출 · ${status}`,
   ]);
-  byId('workflow-next').textContent = changeRequest && (!review || review.needsRecalculation)
-    ? `${changeRequest.owner} · ${changeRequest.deadline}까지 변경 조건 확인 · ${changeRequest.content}`
+  const pendingChange = pendingBuyerChange();
+  byId('workflow-next').textContent = pendingChange
+    ? `${pendingChange.owner} · ${pendingChange.deadline}까지 수정 납품표와 회신 증빙 확인 · ${pendingChange.content}`
     : reply ? `${reply.owner} · ${reply.deadline}까지 바이어 후속 확인`
       : submitted ? `${submitted.owner} · ${submitted.deadline}까지 바이어 회신 확인`
         : approval?.decision === 'approved' ? '영업 · 승인 조건을 확인하고 모의 제출하세요.'
@@ -158,7 +185,7 @@ function render() {
               : blocked || 'CEO·이사회 · 검수된 공급안의 입찰 참여를 결정하세요.';
   renderList('workflow-history', history.length ? history : ['기록된 작업이 없습니다.']);
   const nextLink = byId('workflow-next-link');
-  const buyerChanged = Boolean(changeRequest && (!review || review.needsRecalculation));
+  const buyerChanged = Boolean(pendingChange);
   const intakeReturned = Boolean(intake?.decision && intake.decision !== 'accepted');
   const supplyReturned = buyerChanged || approval?.decision === 'returned';
   const supplyBlocked = !review || issues.length || review.needsRecalculation || review.plans.some(({ revised, shipping }) =>
@@ -169,7 +196,7 @@ function render() {
     : approval?.decision === 'declined' ? 'stop' : reply ? 'done' : 'next';
   nextLink.hidden = outcome === 'stop';
   nextLink.dataset.outcome = outcome;
-  nextLink.href = supplyReturned ? '#capacity-entry'
+  nextLink.href = buyerChanged ? '#buyer-change-edit' : supplyReturned ? '#capacity-entry'
     : !intake ? '#intake-request'
       : intakeReturned || (issues.length && !intake.conditions.deliverySchedule) ? '#review'
         : approval?.decision === 'approved' ? submitted ? '#buyer-reply-form' : '#proposal-document'
@@ -219,15 +246,23 @@ approvalForm.addEventListener('submit', (event) => {
 
 byId('proposal-submit').addEventListener('click', () => {
   if (blockReason() || approval?.decision !== 'approved' || submitted) return;
-  const deadline = new Date();
-  deadline.setDate(deadline.getDate() + 1);
-  const localDate = [deadline.getFullYear(), String(deadline.getMonth() + 1).padStart(2, '0'), String(deadline.getDate()).padStart(2, '0')].join('-');
-  submitted = { version: approval.version, owner: '영업', deadline: localDate };
+  const today = new Date();
+  const submittedOn = experienceMode ? '2026-07-21'
+    : [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
+  const deadline = new Date(`${submittedOn}T00:00:00Z`);
+  deadline.setUTCDate(deadline.getUTCDate() + 1);
+  submitted = { version: approval.version, owner: '영업', submittedOn, deadline: deadline.toISOString().slice(0, 10) };
   byId('reply-owner').value = submitted.owner;
   byId('reply-date').value = submitted.deadline;
-  record(`공급안 ${submitted.version} 모의 제출 · 영업 · 다음 날 회신 확인`);
+  record(`공급안 ${submitted.version} 모의 제출 ${submittedOn} · 영업 · ${submitted.deadline} 회신 확인`);
   persistProposal();
   render();
+});
+
+byId('experience-buyer-change').addEventListener('click', () => {
+  if (!changeExperience || !submitted) return;
+  byId('reply-type').value = 'change';
+  byId('reply-content').value = '체험용 변경 회신 SIM-BUYER-002. 수출 예약이 54,000 EA로 늘어, 2026-08-02 기초 1,500 EA·더마 500 EA로 조정하는 데 동의합니다. 물류 회신 SIM-LOG-002를 확인하세요.';
 });
 
 replyForm.addEventListener('submit', (event) => {
@@ -245,8 +280,10 @@ replyForm.addEventListener('submit', (event) => {
   record(`공급안 ${submitted.version} · 바이어 ${type === 'change' ? '조건 변경 요청' : '접수 확인'} · ${content} · ${owner} · ${deadline}`);
   notice.textContent = '';
   if (type === 'change') {
-    changeRequest = reply;
+    changeRequest = { ...reply, id: crypto.randomUUID(), source: intake.source };
     reopenReview();
+    window.dispatchEvent(new Event('corevia:buyer-change'));
+    location.hash = 'buyer-change-edit';
   }
   else {
     persistProposal();
@@ -255,4 +292,3 @@ replyForm.addEventListener('submit', (event) => {
 });
 
 render();
-import { loadState, saveState } from './workflow-storage.mjs';

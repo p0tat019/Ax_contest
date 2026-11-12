@@ -92,6 +92,10 @@ function TrialPlayback({ result, onClose, onShowResult }) {
           {plans.map((plan, index) => <div key={plan.product}><dt>{productName(plan.product)} · 배정량</dt><dd>{ea(plan.revised.proposal)}</dd><small>독립 계산 {ea(expected[index])}</small></div>)}
         </dl>
         <p className="trial-player-note">모의 실행 완료 · 담당자 승인과 제출 기록은 생성되지 않았습니다.</p>
+        <div className="trial-experience-links" aria-label="업무 체험">
+          <a href="?experience=1&amp;case=normal#intake-request">정상 제출 체험 →</a>
+          <a href="?experience=1&amp;case=change#intake-request">조건 변경·재검수 체험 →</a>
+        </div>
       </>}
     </div></div>
     <footer className="trial-player-footer">

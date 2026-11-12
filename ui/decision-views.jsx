@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import evidence from '../public/intake-data.json';
-import { compareCapacity, expansionAvailable } from '../public/capacity-plan.mjs';
+import { compareCapacity, expansionAvailable, readQuantity } from '../public/capacity-plan.mjs';
 import { deliverySchedule } from '../public/proposal-checks.mjs';
 import { weeks, bids, assessBid, freeSupply } from './supply-overview-data.mjs';
 
@@ -137,8 +137,9 @@ export function ScenarioLab() {
     capacity: product.stock - product.hold + product.output, commitments: product.recurring + product.reserved,
     requested: bids[0].demand[product.code], additional: 0, reduction: 0, source: '시연용 주간 공급 가정',
   }));
-  const parsed = Object.fromEntries(Object.entries(inputs).map(([key, raw]) => [key, raw === '' ? null : Number(raw)]));
-  const valid = Object.values(parsed).every((value) => value === null || (Number.isSafeInteger(value) && value >= 0 && value <= 1000000000000));
+  const parsed = Object.fromEntries(Object.entries(inputs).map(([key, raw]) => [key, readQuantity(raw)]));
+  const invalid = (key) => parsed[key] !== null && !(parsed[key] >= 0 && parsed[key] <= 1000000000000);
+  const valid = !Object.keys(inputs).some(invalid);
   const modes = [
     ['현상 유지', basis.map((row) => ({ ...row, requested: 0 })), 0],
     ['부분 공급', basis, 0],
@@ -154,7 +155,7 @@ export function ScenarioLab() {
       {[
         ['growth', '더마 증설분 (EA)'], ['export', '추가 수출 한도 (EA)'],
         ['cost', '투자비 (원)'], ['margin', '평균 공헌이익 (원/EA)'],
-      ].map(([key, label]) => <label key={key}>{label}<input type="number" min="0" max="1000000000000" step="1" value={inputs[key]} placeholder="미입력"
+      ].map(([key, label]) => <label key={key}>{label}<input type="text" inputMode="numeric" aria-invalid={invalid(key)} value={inputs[key]} placeholder="미입력"
         onChange={(event) => setInputs((previous) => ({ ...previous, [key]: event.target.value }))} /></label>)}
       <label>증설 설비 가동 예정일<input type="date" value={commissioning} onChange={(event) => setCommissioning(event.target.value)} /></label>
     </div>

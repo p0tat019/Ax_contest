@@ -11,7 +11,7 @@ export function deliverySchedule(value) {
   if (!value?.trim()) return [];
   const seen = new Set();
   return value.split(/[;\n]/).filter((entry) => entry.trim()).map((entry) => {
-    const match = entry.trim().match(/^(\d{4}-\d{2}-\d{2})\s+(PL-\d{2})\s+([\d,]+)(?:\s+EA)?$/i);
+    const match = entry.trim().match(/^(\d{4}-\d{2}-\d{2})\s+(PL-\d{2})\s+(\d{1,3}(?:,\d{3})+|\d+)(?:\s+EA)?$/i);
     const date = dateKey(match?.[1]);
     const product = match?.[2].toUpperCase();
     const quantity = Number(match?.[3].replaceAll(',', ''));

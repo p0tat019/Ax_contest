@@ -34,12 +34,18 @@ export function deliveryWeek(date) {
   return day.toISOString().slice(0, 10);
 }
 
+export function readQuantity(text) {
+  if (text === '') return null;
+  const value = Number(text);
+  return /^\d+$/.test(text) && Number.isSafeInteger(value) ? value : NaN;
+}
+
 export function shippingRecords(text) {
   const records = new Map();
   for (const entry of text.split('\n').filter((line) => line.trim())) {
     const [week, limit, reserved, ...notes] = entry.split('|').map((part) => part.trim());
-    const capacity = Number(limit);
-    const booked = Number(reserved);
+    const capacity = readQuantity(limit);
+    const booked = readQuantity(reserved);
     const source = notes.join(' | ');
     if (!week || deliveryWeek(week) !== week || !limit || !reserved || !source || records.has(week)
       || ![capacity, booked].every((value) => Number.isSafeInteger(value) && value >= 0)) {

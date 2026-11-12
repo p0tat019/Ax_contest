@@ -3,6 +3,7 @@ import { lookupEvidence } from './intake-lookup.mjs';
 import { setCapacityIntake } from './capacity.mjs';
 import { setWorkflowIntake } from './proposal-workflow.mjs';
 import { experienceMode, loadState, saveState } from './workflow-storage.mjs';
+import { deliverySchedule } from './proposal-checks.mjs';
 
 const byId = (id) => document.getElementById(id);
 const request = byId('request');
@@ -333,7 +334,13 @@ function extractDraft() {
     request.focus();
     return;
   }
-  showDraft(extractConditions(request.value));
+  const conditions = extractConditions(request.value);
+  if (!Object.values(conditions).some(Boolean)) {
+    notice.textContent = '확인할 입찰 조건을 찾지 못했습니다. 요청 요약이라면 “요청 고객: C-201”, “품목 및 요청 물량: PL-01 1000 EA”처럼 항목명과 값을 입력하세요.';
+    request.focus();
+    return;
+  }
+  showDraft(conditions);
   notice.textContent = '조건 초안을 만들었습니다. 담당자 검수 후 저장할 수 있습니다.';
 }
 
@@ -389,6 +396,21 @@ byId('review-form').addEventListener('submit', (event) => {
     return;
   }
   const conditions = readConditions();
+  if (decision.value === 'accepted') {
+    const field = !conditions.customer ? 'customer' : !evidence.lines?.length ? 'products' : null;
+    if (field) {
+      saveNotice.textContent = field === 'customer' ? '요청 고객을 확인하세요.' : '내부 자료에서 조회되는 요청 품목 코드를 확인하세요.';
+      inputs.get(field).focus();
+      return;
+    }
+    try {
+      if (conditions.deliverySchedule && !deliverySchedule(conditions.deliverySchedule).length) throw new Error('확정 납품표에는 한 줄 이상의 날짜·품목·수량이 필요합니다.');
+    } catch (error) {
+      saveNotice.textContent = error.message;
+      inputs.get('deliverySchedule').focus();
+      return;
+    }
+  }
   const previous = saved?.source === request.value ? saved.conditions : null;
   if (decision.value === 'accepted' && previous?.deliverySchedule && conditions.deliverySchedule
     && conditions.deliveryEvidence === previous.deliveryEvidence

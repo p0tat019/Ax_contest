@@ -15,8 +15,9 @@ const pages = [
   ['scenario', '시나리오 분석', 'scenario-heading', '◈'],
   ['proposal', '검수·승인', 'proposal-workflow', '✓'],
 ];
-const aliases = { review: 'intake', result: 'intake', 'intake-request': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
-  'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal', 'proposal-document': 'proposal', 'trial-heading': 'scenario' };
+const aliases = { review: 'intake', reviewer: 'intake', result: 'intake', 'intake-request': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
+  'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal', 'proposal-document': 'proposal',
+  'buyer-reply-form': 'proposal', 'trial-heading': 'scenario' };
 const byId = (id) => document.getElementById(id);
 const hash = () => window.location.hash.slice(1);
 const viewForHash = () => pages.find(([id, , anchor]) => id === hash() || anchor === hash())?.[0] ?? aliases[hash()] ?? 'dashboard';
@@ -32,8 +33,10 @@ function useWorkflow() {
       reviewed: Boolean(plans.length && ['영업','생산관리','재무·전략'].every((role) =>
         department?.reviews?.some(([name, item]) => name === role && item.decision === 'accepted'))),
       submitted: Boolean(loadState('proposal')?.submitted),
+      replied: loadState('proposal')?.reply?.type === 'received',
       decision: loadState('proposal')?.approval?.decision,
       next: byId('workflow-next').textContent, href: byId('workflow-next-link').getAttribute('href'),
+      outcome: byId('workflow-next-link').dataset.outcome,
     };
   };
   const [workflow, setWorkflow] = useState(snapshot);
@@ -131,26 +134,38 @@ function Workspace() {
 }
 
 function WorkflowMap({ workflow, view, anchor }) {
-  const { record, plans, reviewed, approved, submitted, next, href } = workflow;
+  const { record, plans, reviewed, approved, submitted, replied, next, href, outcome } = workflow;
   const steps = [
     ['접수·자료 확인', '#intake-request', record?.decision === 'accepted'],
     ['공급안 계산', '#capacity-entry', plans.length > 0],
     ['부서 검수', '#department-review', reviewed],
     ['참여 승인', '#proposal-workflow', approved],
-    ['모의 제출·회신', '#proposal-document', submitted],
+    ['모의 제출·회신', '#proposal-document', replied],
   ];
+  const destination = steps.findIndex(([, target]) => target === href
+    || (target === '#intake-request' && href === '#review')
+    || (target === '#proposal-document' && href === '#buyer-reply-form'));
+  const destinationLabel = steps[destination]?.[0] ?? '다음 작업';
+  const returnRequired = outcome === 'return';
+  const showLink = href && outcome !== 'stop';
   const current = view === 'intake' ? 0 : view === 'capacity' ? 1
-    : view === 'proposal' ? anchor === 'department-review' ? 2 : anchor === 'proposal-document' ? 4 : 3 : -1;
+    : view === 'proposal' ? anchor === 'department-review' ? 2 : ['proposal-document', 'buyer-reply-form'].includes(anchor) ? 4 : 3 : -1;
   return <nav aria-label="입찰 진행 단계" className="workflow-map">
     <ol>{steps.map(([label, target, complete], index) => <li key={target}>
-      <a href={target} aria-current={current === index ? 'step' : undefined}>
+      <a href={target} aria-current={current === index ? 'step' : undefined}
+        data-return={view !== 'scenario' && returnRequired && destination === index ? 'true' : undefined}>
         <span className="workflow-number" aria-hidden="true">{complete ? '✓' : index + 1}</span>
-        <strong>{label}</strong><small>{current === index ? '현재 화면' : complete ? '완료' : '대기'}</small>
+        <strong>{label}</strong><small>{[
+          current === index && '현재 화면',
+          view !== 'scenario' && returnRequired && destination === index ? '보완 필요'
+            : complete ? '완료' : index === 4 && submitted ? '회신 대기'
+              : view !== 'scenario' && destination === index && outcome === 'next' ? '다음 작업' : '대기',
+        ].filter(Boolean).join(' · ')}</small>
       </a>
     </li>)}</ol>
     <p>{view === 'scenario' ? '테스트 화면 · 승인 기록과 분리' : next}
       {view === 'scenario' ? <a href="#dashboard-heading">종합 현황으로 돌아가기 →</a>
-        : href && <a href={href}>{steps.find(([, target]) => target === href)?.[0] ?? '다음 작업'} 열기 →</a>}</p>
+        : showLink && <a href={href}>{returnRequired ? `${destinationLabel} 단계로 돌아가기 ↶` : `${destinationLabel} 열기 →`}</a>}</p>
   </nav>;
 }
 

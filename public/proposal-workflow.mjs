@@ -153,14 +153,28 @@ function render() {
     : reply ? `${reply.owner} · ${reply.deadline}까지 바이어 후속 확인`
       : submitted ? `${submitted.owner} · ${submitted.deadline}까지 바이어 회신 확인`
         : approval?.decision === 'approved' ? '영업 · 승인 조건을 확인하고 모의 제출하세요.'
-          : approval?.decision === 'returned' ? '담당 부서 · 보완 사유를 반영해 공급안을 다시 계산하세요.'
+          : approval?.decision === 'returned' ? `공급안 재계산 필요 · 승인 담당자 보완 사유 ${approval.reason}`
             : approval?.decision === 'declined' ? '입찰 참여 보류 결정이 기록됐습니다.'
               : blocked || 'CEO·이사회 · 검수된 공급안의 입찰 참여를 결정하세요.';
   renderList('workflow-history', history.length ? history : ['기록된 작업이 없습니다.']);
-  byId('workflow-next-link').href = !intake || (intake.decision && intake.decision !== 'accepted')
-    || (issues.length && !intake.conditions.deliverySchedule) ? '#intake-request'
-    : !review || issues.length || review.needsRecalculation || review.plans.some(({ revised }) => revised.existingShortage > 0) ? '#capacity-entry'
-      : blocked ? '#department-review' : '#proposal-workflow';
+  const nextLink = byId('workflow-next-link');
+  const buyerChanged = Boolean(changeRequest && (!review || review.needsRecalculation));
+  const intakeReturned = Boolean(intake?.decision && intake.decision !== 'accepted');
+  const supplyReturned = buyerChanged || approval?.decision === 'returned';
+  const supplyBlocked = !review || issues.length || review.needsRecalculation || review.plans.some(({ revised, shipping }) =>
+    revised.existingShortage > 0 || shipping?.shortage > 0) || !review.plans.some(({ revised }) => revised.proposal > 0);
+  const departmentReturned = !supplyBlocked && !approval && roles.some((role) =>
+    ['conditional', 'revise', 'rejected'].includes(review.reviews.get(role)?.decision));
+  const outcome = intakeReturned || supplyReturned || departmentReturned ? 'return'
+    : approval?.decision === 'declined' ? 'stop' : reply ? 'done' : 'next';
+  nextLink.hidden = outcome === 'stop';
+  nextLink.dataset.outcome = outcome;
+  nextLink.href = supplyReturned ? '#capacity-entry'
+    : !intake ? '#intake-request'
+      : intakeReturned || (issues.length && !intake.conditions.deliverySchedule) ? '#review'
+        : approval?.decision === 'approved' ? submitted ? '#buyer-reply-form' : '#proposal-document'
+          : supplyBlocked ? '#capacity-entry' : blocked ? '#department-review' : '#proposal-workflow';
+  nextLink.textContent = outcome === 'return' ? '보완할 단계 열기' : outcome === 'done' ? '회신 기록 열기' : '다음 작업 열기';
 }
 
 approvalForm.addEventListener('submit', (event) => {

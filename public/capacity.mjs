@@ -1,4 +1,4 @@
-import { capacityTrace, compareCapacity, deliveryWeek, shippingRecords, verifyShippingEvidence } from './capacity-plan.mjs';
+import { capacityTrace, compareCapacity, deliveryWeek, readQuantity, shippingRecords, verifyShippingEvidence } from './capacity-plan.mjs';
 import { deliverySchedule } from './proposal-checks.mjs';
 import { scenarios } from './capacity-scenarios.mjs';
 import { setReviewPlan } from './department-review.mjs';
@@ -85,7 +85,11 @@ function currentRows() {
       week: value('week'),
       deliveryDate: value('deliveryDate'),
       source: value('source'),
-      ...Object.fromEntries(quantityFields.map(([name]) => [name, value(name) === '' ? null : Number(value(name))])),
+      ...Object.fromEntries(quantityFields.map(([name]) => {
+        const raw = value(name);
+        const quantity = readQuantity(raw);
+        return [name, Number.isNaN(quantity) ? raw : quantity];
+      })),
     };
   });
 }
@@ -168,13 +172,14 @@ function evidencePanel(plan, plans) {
 function addInput(row, name, label, type, value, required = true) {
   const input = document.createElement('input');
   input.name = name;
-  input.type = type;
+  input.type = type === 'number' ? 'text' : type;
   input.required = required;
   input.value = value ?? '';
   input.setAttribute('aria-label', label);
   if (type === 'number') {
-    input.min = '0';
-    input.step = '1';
+    input.inputMode = 'numeric';
+    input.pattern = '[0-9]+';
+    input.title = '0 이상의 정수를 숫자로만 입력하세요.';
   }
   appendCell(row, input);
 }

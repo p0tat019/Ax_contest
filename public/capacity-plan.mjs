@@ -1,7 +1,5 @@
 import { dateKey } from './proposal-checks.mjs';
-
-const allocationOrder = (a, b) =>
-  (a.deliveryDate ?? '').localeCompare(b.deliveryDate ?? '') || a.product.localeCompare(b.product);
+import { allocationOrder, allocateProduction, allocateShipping } from './capacity-allocation.mjs';
 
 export function expansionAvailable(quantity, commissioning, delivery) {
   const start = dateKey(commissioning);
@@ -18,12 +16,6 @@ export function capacityTrace(plan, plans) {
   const shippingAvailable = plan.shipping
     ? Math.max(0, plan.shipping.capacity - plan.shipping.booked - previouslyAllocated) : null;
   return { effective, existing, production, previouslyAllocated, shippingAvailable };
-}
-function allocate(capacity, commitments, requested) {
-  return {
-    proposal: Math.min(requested, Math.max(0, capacity - commitments)),
-    existingShortage: Math.max(0, commitments - capacity),
-  };
 }
 
 export function deliveryWeek(date) {
@@ -105,8 +97,8 @@ export function compareCapacity(rows, shipping = new Map(), previousShipping = s
     }
     seen.add(lineKey);
     seen.add(productKey);
-    const baseline = allocate(capacity, commitments, requested);
-    const revised = allocate(capacity - reduction, commitments + additional, requested);
+    const baseline = allocateProduction(capacity, commitments, requested);
+    const revised = allocateProduction(capacity - reduction, commitments + additional, requested);
     return { ...row, baseline, revised, unmetRequest: requested - revised.proposal };
   });
   const ordered = [...plans].sort(allocationOrder);
@@ -117,10 +109,7 @@ export function compareCapacity(rows, shipping = new Map(), previousShipping = s
     if (!record) continue;
     plan.shipping = { week, ...record, shortage: Math.max(0, record.booked - record.capacity) };
     for (const [phase, evidence] of [['baseline', previousShipping.get(week) ?? record], ['revised', record]]) {
-      const ledger = remaining[phase];
-      const available = ledger.get(week) ?? Math.max(0, evidence.capacity - evidence.booked);
-      const allocated = Math.min(plan[phase].proposal, available);
-      ledger.set(week, available - allocated);
+      const allocated = allocateShipping(plan[phase].proposal, evidence, remaining[phase], week);
       if (phase === 'revised') plan.shipping.restricted = plan[phase].proposal - allocated;
       plan[phase].proposal = allocated;
     }

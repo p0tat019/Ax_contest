@@ -1,8 +1,12 @@
-import { capacityTrace, compareCapacity, deliveryWeek, readQuantity, shippingRecords, verifyShippingEvidence } from './capacity-plan.mjs';
+import { capacityTrace, compareCapacity, deliveryWeek, readQuantity, shippingRecords, verifyShippingEvidence } from './capacity-plan.mjs?v=allocation-audit-1';
+import { verifyAllocation } from './capacity-verification.mjs';
+import { renderSupplyDecision } from './supply-decision-view.mjs';
 import { deliverySchedule } from './proposal-checks.mjs';
 import { scenarios } from './capacity-scenarios.mjs';
-import { setReviewPlan } from './department-review.mjs?v=action-check-1';
+import { setReviewPlan } from './department-review.mjs?v=work-mail-2';
+import { recordShippingReply } from './proposal-workflow.mjs?v=work-mail-2';
 import { changeExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs';
 
 const byId = (id) => document.getElementById(id);
 const form = byId('capacity-form');
@@ -17,6 +21,7 @@ const quantityFields = [
 ];
 let lines = [];
 let intake;
+let shippingReplies = {};
 
 function snapshotShipping() {
   const context = intake.supplyContext;
@@ -49,8 +54,88 @@ function supplyEvidence(row) {
 function saveDraft() {
   updateEvidenceFields();
   invalidateCalculation(true);
-  saveState('capacity', { intakeVersion: intake.version, rows: currentRows(), shipping: shippingInput.value, calculated: false });
+  const saved = saveCapacity(false);
   status.textContent = '';
+  syncShippingInbox();
+  return saved;
+}
+
+function saveCapacity(calculated) {
+  return saveState('capacity', {
+    intakeVersion: intake.version, rows: currentRows(), shipping: shippingInput.value, shippingReplies, calculated,
+  });
+}
+
+function shippingWeeks() {
+  if (!intake?.buyerChangeId || intake.decision !== 'accepted' || !intake.conditions.deliveryEvidence) return [];
+  return [...new Set(deliverySchedule(intake.conditions.deliverySchedule).map(({ date }) => deliveryWeek(date)))].sort();
+}
+
+function hasShippingReply(week, entry) {
+  const answer = shippingReplies[week];
+  return answer?.decision === 'confirmed' && entry
+    && ['capacity', 'booked', 'source'].every((field) => entry[field] === answer[field]);
+}
+
+function syncShippingInbox() {
+  const weeks = shippingWeeks();
+  let records;
+  try { records = shippingRecords(shippingInput.value); }
+  catch { records = new Map(); }
+  setInboxTasks('shipping', weeks.flatMap((week) => {
+    const current = records.get(week);
+    const previous = shippingReplies[week];
+    if (hasShippingReply(week, current)) return [];
+    return [{
+      id: `shipping/${intake.version}/${week}/${previous?.answeredAt ?? ''}/${current?.capacity ?? ''}/${current?.booked ?? ''}/${current?.source ?? ''}`,
+      owner: '물류', title: `${week} 주차 공동 출고 확인`,
+      detail: `${intake.conditions.customer || '입찰'} · 수정 납품표에 적용할 공동 출고 한도와 기존 예약을 확인하세요.`
+        + (current ? `\n현재 입력 · 한도 ${format.format(current.capacity)} EA · 예약 ${format.format(current.booked)} EA\n근거 · ${current.source}` : '')
+        + (previous?.decision === 'unavailable' ? `\n이전 확인 불가 사유 · ${previous.evidence}` : ''),
+      fields: [textField('person', '물류 담당자'), choiceField('decision', '회신 상태',
+        [['confirmed', '한도와 예약 확인'], ['unavailable', '확인 불가']]),
+      textField('capacity', '공동 출고 한도 (EA)', { quantity: true, optional: true }),
+      textField('booked', '기존 예약 (EA)', { quantity: true, optional: true }),
+      textField('evidence', '회신 증빙 또는 확인 불가 사유', { multiline: true })],
+      submit(values) { return applyShippingReply(week, values); },
+    }];
+  }));
+}
+
+function applyShippingReply(week, { person, decision, capacity, booked, evidence }) {
+  if (!shippingWeeks().includes(week)) throw new Error('납품표가 바뀌었습니다. 새 물류 요청을 열어 주세요.');
+  if (!person || !evidence || !['confirmed', 'unavailable'].includes(decision)) throw new Error('담당자, 회신 상태와 근거를 입력하세요.');
+  const answeredAt = new Date().toISOString();
+  if (decision === 'unavailable') {
+    shippingReplies = { ...shippingReplies, [week]: { decision, evidence, answeredAt } };
+    if (!saveDraft()) throw new Error('회신을 저장하지 못했습니다.');
+    recordShippingReply(week, person, `확인 불가 · ${evidence}`);
+    return '확인 불가 사유를 기록했습니다. 해당 주차 물류 요청은 대기 상태입니다.';
+  }
+  const quantities = [capacity, booked].map(readQuantity);
+  if (!quantities.every((quantity) => Number.isSafeInteger(quantity) && quantity >= 0)) {
+    throw new Error('출고 한도와 기존 예약을 0 이상의 정수로 모두 입력하세요.');
+  }
+  const records = shippingRecords(shippingInput.value);
+  const source = `${person} · ${evidence.replace(/\s+/g, ' ')}`.replaceAll('|', '／');
+  const entry = { capacity: quantities[0], booked: quantities[1], source };
+  records.set(week, entry);
+  const untouched = rows.rows.length === 1 && currentRows().every((row) => !row.week && !row.source && row.requested === null);
+  if (untouched && intake.supplyContext) {
+    try { loadConfirmedSchedule(); }
+    catch (error) { status.textContent = error.message; }
+  }
+  shippingInput.value = [...records].map(([date, item]) => `${date} | ${item.capacity} | ${item.booked} | ${item.source}`).join('\n');
+  shippingReplies = { ...shippingReplies, [week]: { ...entry, decision, answeredAt } };
+  if (!saveDraft()) throw new Error('물류 회신을 저장하지 못했습니다.');
+  recordShippingReply(week, person, `한도 ${format.format(entry.capacity)} EA · 예약 ${format.format(entry.booked)} EA · ${source}`);
+  if (shippingWeeks().some((date) => !hasShippingReply(date, records.get(date)))) {
+    return '회신을 저장했습니다. 나머지 주차의 물류 회신을 기다립니다.';
+  }
+  form.requestSubmit();
+  return result.hidden
+    ? `회신을 저장했습니다. 생산계획의 주간 입력을 확인하세요.${status.textContent ? ` ${status.textContent}` : ''}`
+    : '물류 회신을 반영해 재계산했습니다. 새 공급안의 부서 검수 요청을 열었습니다.';
 }
 
 function updateEvidenceFields() {
@@ -123,8 +208,12 @@ export function setCapacityIntake(record) {
     : '';
   byId('capacity-confirmed').hidden = !context;
   shippingInput.value = carriedShipping ?? snapshotShipping();
-  if (!lines.length) return;
   const saved = loadState('capacity');
+  shippingReplies = saved?.intakeVersion === record.version ? saved.shippingReplies ?? {} : {};
+  if (!lines.length) {
+    setInboxTasks('shipping');
+    return;
+  }
   if (saved?.intakeVersion === record.version && Array.isArray(saved.rows)) {
     shippingInput.value = saved.shipping ?? shippingInput.value;
     for (const row of saved.rows) addRow(row);
@@ -134,6 +223,7 @@ export function setCapacityIntake(record) {
     addRow();
     if (sameBid) saveDraft();
   }
+  syncShippingInbox();
 }
 
 function appendCell(row, content) {
@@ -217,25 +307,27 @@ byId('capacity-add').addEventListener('click', () => {
   saveDraft();
 });
 
+function loadConfirmedSchedule() {
+  const schedule = deliverySchedule(intake.conditions.deliverySchedule);
+  if (!schedule.length || !intake.conditions.deliveryEvidence) throw new Error('영업 검수에서 바이어가 확인한 납품표와 근거를 먼저 저장하세요.');
+  const context = intake.supplyContext;
+  if (schedule.some(({ date, product }) => {
+    const week = context?.weeks.find(({ start }) => start === deliveryWeek(date));
+    return !week?.products.some(({ code }) => code === product) || !lines.some((line) => line.product === product);
+  })) throw new Error('대시보드에 해당 납품 주간·품목 근거가 없습니다. 확인된 주간 회신을 직접 입력하세요.');
+  const keys = new Set(schedule.map(({ date, product }) => `${deliveryWeek(date)}/${product}`));
+  if (keys.size !== schedule.length) throw new Error('현재 계산은 같은 품목의 주 내 복수 납품일을 지원하지 않습니다. 담당자에게 별도 검토를 요청하세요.');
+  const seeded = schedule.map(({ date, product, quantity }) => ({
+    ...supplyEvidence({ ...lines.find((line) => line.product === product), week: deliveryWeek(date), deliveryDate: date, requested: quantity }),
+    source: intake.conditions.deliveryEvidence,
+  }));
+  rows.replaceChildren();
+  seeded.forEach(addRow);
+}
+
 byId('capacity-confirmed').addEventListener('click', () => {
   try {
-    const schedule = deliverySchedule(intake.conditions.deliverySchedule);
-    if (!schedule.length || !intake.conditions.deliveryEvidence) throw new Error('영업 검수에서 바이어가 확인한 납품표와 근거를 먼저 저장하세요.');
-    const context = intake.supplyContext;
-    if (schedule.some(({ date, product }) => {
-      const week = context.weeks.find(({ start }) => start === deliveryWeek(date));
-      return !week?.products.some(({ code }) => code === product) || !lines.some((line) => line.product === product);
-    })) throw new Error('대시보드에 해당 납품 주간·품목 근거가 없습니다. 확인된 주간 회신을 직접 입력하세요.');
-    const keys = new Set(schedule.map(({ date, product }) => `${deliveryWeek(date)}/${product}`));
-    if (keys.size !== schedule.length) throw new Error('현재 계산은 같은 품목의 주 내 복수 납품일을 지원하지 않습니다. 담당자에게 별도 검토를 요청하세요.');
-    rows.replaceChildren();
-    for (const { date, product, quantity } of schedule) {
-      const line = lines.find((entry) => entry.product === product);
-      const seeded = supplyEvidence({
-        ...line, week: deliveryWeek(date), deliveryDate: date, requested: quantity,
-      });
-      addRow({ ...seeded, source: intake.conditions.deliveryEvidence });
-    }
+    loadConfirmedSchedule();
     saveDraft();
     status.textContent = '확정 납품표와 대시보드 근거를 연결했습니다. 물류 회신을 확인하고 계산하세요.';
   } catch (error) { status.textContent = error.message; }
@@ -298,9 +390,14 @@ form.addEventListener('submit', (event) => {
     if (!rows.rows.length) throw new Error('계산할 주간 행을 추가하세요.');
     const inputs = currentRows();
     const shipping = shippingRecords(shippingInput.value);
+    const requiresFinanceEvidence = Object.keys(shippingReplies).length > 0;
+    const pendingShipping = requiresFinanceEvidence && shippingWeeks().find((week) => !hasShippingReply(week, shipping.get(week)));
+    if (pendingShipping) throw new Error(`${pendingShipping} 주차의 물류 회신을 받은편지함에서 확인하세요.`);
     const dashboardShipping = shippingRecords(snapshotShipping());
     verifyShippingEvidence(inputs.map(({ deliveryDate }) => deliveryDate), shipping, dashboardShipping);
     const plans = compareCapacity(inputs.map(supplyEvidence), shipping, dashboardShipping);
+    const audit = verifyAllocation(plans);
+    if (audit.failures.length) throw new Error(`계산 검증 실패 · ${audit.failures.join(' · ')}`);
     const comparison = byId('capacity-comparison');
     comparison.replaceChildren();
     let shortage = 0;
@@ -327,10 +424,29 @@ form.addEventListener('submit', (event) => {
       ? `기존 납품 ${format.format(shortage)} EA 부족 · 생산관리 복구안 검토 필요`
       : '입력한 주차의 기존 납품 부족 0 EA';
     byId('capacity-summary').textContent = [...proposals, action].join(' · ');
+    byId('capacity-audit-status').textContent = audit.missingShipping
+      ? `수량 대조 통과 · 출고 증빙 없는 후보 ${audit.missingShipping}건은 잠정치`
+      : `수량 대조 통과 · ${plans.length}개 배정 행 · 공동 출고 ${audit.shippingWeeks.length}개 주차 확인`;
+    const shippingOverbooked = plans.some(({ shipping }) => shipping?.shortage > 0);
+    const shippingLimited = plans.some(({ shipping }) => shipping?.restricted > 0);
+    const partial = plans.some(({ unmetRequest }) => unmetRequest > 0);
+    const blocked = Boolean(shortage || shippingOverbooked || audit.missingShipping);
+    renderSupplyDecision(byId('capacity-decision-card'), plans, {
+      state: blocked ? 'blocked' : 'review',
+      label: blocked ? '확약 보류' : partial ? '조건 조정 필요' : '검수 전 후보',
+      reason: shortage ? '기존 납품 부족을 해소하고 다시 계산하세요.'
+        : shippingOverbooked ? '기존 예약이 출고 한도를 초과합니다. 물류 복구안을 확인하세요.'
+          : audit.missingShipping ? '출고 증빙이 없는 배정량은 잠정치입니다. 물류 근거를 확인하세요.'
+            : shippingLimited ? '출고 한도로 제안 후보가 줄었습니다. 물류 여력을 다시 확인하거나 바이어에게 수량·일정 조정을 확인하세요.'
+              : partial ? '생산 여력으로 요청을 모두 충족하기 어렵습니다. 자재·품질 근거와 조정할 물량을 확인하세요.'
+                : '승인 전에 바이어 확인 납품표와 대조하고, 부서 검수를 진행하세요.',
+    });
     status.textContent = '';
     result.hidden = false;
-    saveState('capacity', { intakeVersion: intake.version, rows: inputs, shipping: shippingInput.value, calculated: true });
-    const version = setReviewPlan({ intakeVersion: intake.version, customer: intake.conditions.customer, plans }, focusRow);
+    saveCapacity(true);
+    const version = setReviewPlan({ intakeVersion: intake.version, customer: intake.conditions.customer, plans,
+      ...(requiresFinanceEvidence ? { requiresFinanceEvidence } : {}),
+    }, focusRow);
     byId('capacity-audit-meta').textContent = `공급안 버전 ${version} · 접수 검수 ${intake.version} · 이번 계산 ${new Date().toLocaleString('ko-KR')} · 자료 기준일 ${intake.evidence?.asOf ?? '미기록'}`;
   } catch (error) {
     status.textContent = error.message;

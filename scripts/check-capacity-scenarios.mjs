@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { capacityTrace, compareCapacity, expansionAvailable, shippingRecords, verifyShippingEvidence } from '../public/capacity-plan.mjs';
 import { scenarios } from '../public/capacity-scenarios.mjs';
 import { deliverySchedule, proposalIssues } from '../public/proposal-checks.mjs';
+import { protectCommitments, allocateProduction } from '../public/capacity-allocation.mjs';
+import { summarizeSupply, verifyAllocation } from '../public/capacity-verification.mjs';
 import { defaults, generateTrial, prepareTrial, runFollowupExample, runGoldenTrials, runTrial } from '../ui/bid-trial.mjs';
 
 const followup = runFollowupExample();
@@ -10,6 +12,16 @@ assert.deepEqual(followup.limited.map(({ revised }) => revised.proposal), [2000,
 assert.deepEqual(followup.revised.map(({ revised }) => revised.proposal), [1500, 500]);
 assert.deepEqual(followup.logisticsChecks.map(({ owner }) => owner), ['물류', '물류']);
 assert.deepEqual(followup.productionChecks.map(({ owner }) => owner), ['조달', '품질']);
+assert.deepEqual(protectCommitments(80, 85), { available: 0, existingShortage: 5 });
+assert.deepEqual(allocateProduction(100, 60, 50), { proposal: 40, existingShortage: 0 });
+assert.deepEqual(verifyAllocation(followup.limited).failures, []);
+assert.equal(verifyAllocation(followup.limited).shippingWeeks[0].total, 2000);
+assert.deepEqual(summarizeSupply(followup.limited), {
+  requested: 16000, production: 16000, shippingLoss: 14000, proposal: 2000, existingShortage: 0, missingShipping: 0,
+});
+const tampered = structuredClone(followup.limited);
+tampered[1].revised.proposal = 1;
+assert.match(verifyAllocation(tampered).failures.join(), /공동 출고 한도 초과/);
 
 for (const scenario of scenarios) {
   if (scenario.expectedError) {
@@ -45,6 +57,13 @@ const conditions = {
 assert.deepEqual(proposalIssues(conditions, compareCapacity(inputs, original)), []);
 assert.match(proposalIssues(conditions, compareCapacity(inputs)).join(), /출고 한도/);
 const changed = compareCapacity(inputs, booked, original);
+assert.deepEqual(compareCapacity([...inputs].reverse(), booked, original).reverse(), changed);
+assert.equal(verifyAllocation(compareCapacity(inputs)).missingShipping, 2);
+const sameDelivery = [inputs[0], { ...inputs[0], week: '2026-07-20' }];
+const scarceShipping = shippingRecords(`${week} | 100 | 60 | 공동 출고`);
+const firstRun = compareCapacity(sameDelivery, scarceShipping);
+assert.deepEqual(firstRun.map((row) => row.revised.proposal), [10, 30]);
+assert.deepEqual(compareCapacity([...sameDelivery].reverse(), scarceShipping).reverse(), firstRun);
 assert.deepEqual(changed.map((row) => row.revised.proposal), [30, 10]);
 assert.deepEqual(capacityTrace(changed[1], changed), {
   effective: 100, existing: 20, production: 30, previouslyAllocated: 30, shippingAvailable: 10,

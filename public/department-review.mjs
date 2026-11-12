@@ -1,7 +1,8 @@
 import { requestFeedback } from './ai-client.mjs';
 import { supplyChecks } from './capacity-plan.mjs?v=followup-demo-1';
-import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=action-check-1';
+import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=work-mail-2';
 import { loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs';
 
 const byId = (id) => document.getElementById(id);
 const section = byId('department-review-content');
@@ -88,6 +89,7 @@ export function setReviewPlan(plan, onEditRow, edited = false) {
   byId('department-notice').textContent = '';
   if (!plan) {
     active = null;
+    setInboxTasks('departments');
     if (edited && latest?.signature) {
       latest.signature = null;
       latest.reviews.clear();
@@ -123,6 +125,24 @@ function renderReview() {
     list.append(item);
   }
   const next = [];
+  const total = (read) => active.plans.reduce((sum, row) => sum + read(row), 0).toLocaleString('ko-KR');
+  setInboxTasks('departments', active.needsRecalculation ? [] : roles.flatMap((role) => {
+    const previous = active.reviews.get(role);
+    if (previous?.decision === 'accepted') return [];
+    const requiresFinance = role === '재무·전략' && active.requiresFinanceEvidence;
+    return [{
+      id: `department/${active.version}/${role}/${previous?.decidedAt ?? ''}`, owner: role, title: `공급안 ${active.version} 검수`,
+      detail: `${active.customer || '입찰'} · 제안 ${total((row) => row.revised.proposal)} EA · 기존 납품 부족 ${total((row) => row.revised.existingShortage)} EA · 신규 미충족 ${total((row) => row.unmetRequest)} EA`
+        + (previous ? `\n보완 요청 · ${previous.feedback}` : '')
+        + (requiresFinance ? '\n수락하려면 증분원가와 지급·수금 조건의 근거를 각각 기록하세요. 자료가 없으면 보완을 요청하세요.' : ''),
+      fields: [textField('person', '담당자'), choiceField('decision', '검수 결정', Object.entries(decisions)),
+        textField('feedback', '조건·보완 사유 또는 의견', { multiline: true, optional: true }),
+        ...(previous ? [textField('closureEvidence', '보완을 닫은 근거', { multiline: true, optional: true })] : []),
+        ...(requiresFinance ? [textField('cost', '증분원가 근거', { optional: true }),
+          textField('cash', '지급·수금 근거', { optional: true })] : [])],
+      submit(values) { return saveDepartmentDecision({ ...values, role }); },
+    }];
+  }));
   form.hidden = Boolean(active.needsRecalculation);
   if (active.needsRecalculation) next.push('바이어 변경 요청을 반영하고 모듈 2에서 새 공급안을 계산하세요.');
   if (active.plans.some(({ revised }) => revised.existingShortage > 0)) {
@@ -161,11 +181,16 @@ function renderReview() {
 }
 
 function updateClosureField() {
-  const previous = active?.reviews.get(byId('department-role').value);
-  const required = Boolean(previous && previous.decision !== 'accepted' && byId('department-decision').value === 'accepted');
+  const role = byId('department-role').value;
+  const previous = active?.reviews.get(role);
+  const accepted = byId('department-decision').value === 'accepted';
+  const required = Boolean(previous && previous.decision !== 'accepted' && accepted);
   byId('department-closure').hidden = !required;
   byId('department-closure-evidence').required = required;
   byId('department-closure-context').textContent = required ? `이 버전의 보완 사유 · ${previous.feedback}` : '';
+  const finance = role === '재무·전략' && active?.requiresFinanceEvidence && accepted;
+  byId('department-finance-evidence').hidden = !finance;
+  for (const id of ['department-finance-cost', 'department-finance-cash']) byId(id).required = Boolean(finance);
 }
 
 for (const id of ['department-role', 'department-decision']) {
@@ -175,40 +200,48 @@ for (const id of ['department-role', 'department-decision']) {
   });
 }
 
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  if (!active || active.needsRecalculation) return;
-  const role = byId('department-role').value;
-  const person = byId('department-person').value.trim();
-  const decision = byId('department-decision').value;
-  const feedback = byId('department-feedback').value.trim();
-  const notice = byId('department-notice');
+function saveDepartmentDecision({ role, person, decision, feedback, closureEvidence, cost, cash }) {
+  if (!active || active.needsRecalculation) throw new Error('공급안이 바뀌었습니다. 현재 공급안을 다시 계산하세요.');
   if (!roles.includes(role) || !person || !Object.hasOwn(decisions, decision)) {
-    notice.textContent = '부서, 담당자, 결정을 입력하세요.';
-    return;
+    throw new Error('부서, 담당자, 결정을 입력하세요.');
   }
   if (decision !== 'accepted' && !feedback) {
-    notice.textContent = '검수 조건이나 보완·반려 사유를 입력하세요.';
-    return;
+    throw new Error('검수 조건이나 보완·반려 사유를 입력하세요.');
   }
+  const financeRequired = active.requiresFinanceEvidence && role === '재무·전략' && decision === 'accepted';
+  if (financeRequired && (!cost || !cash)) throw new Error('수락하려면 증분원가와 지급·수금 근거를 모두 입력하세요.');
+  const finance = financeRequired ? { cost, cash } : null;
   const previous = active.reviews.get(role);
   let closure;
   if (decision === 'accepted' && previous && previous.decision !== 'accepted') {
-    const evidence = byId('department-closure-evidence').value.trim();
-    if (!evidence) {
-      notice.textContent = '보완을 닫은 근거를 입력하세요.';
-      byId('department-closure-evidence').focus();
-      return;
-    }
-    closure = { issue: previous.feedback, evidence };
+    if (!closureEvidence) throw new Error('보완을 닫은 근거를 입력하세요.');
+    closure = { issue: previous.feedback, evidence: closureEvidence };
   } else if (decision === 'accepted') closure = previous?.closure;
-  active.reviews.set(role, { person, decision, feedback, ...(closure ? { closure } : {}) });
-  persistReview();
+  const reviews = new Map(active.reviews).set(role, {
+    person, decision, feedback, decidedAt: new Date().toISOString(),
+    ...(closure ? { closure } : {}), ...(finance ? { finance } : {}),
+  });
+  if (!saveState('department', { ...latest, reviews: [...reviews] })) throw new Error('검수 회신을 저장하지 못했습니다.');
+  active.reviews = reviews;
   recordDepartmentDecision(active.version, role, person, decisions[decision],
-    [feedback, closure && `보완 사유 ${closure.issue} · 종료 근거 ${closure.evidence}`].filter(Boolean).join(' · '));
+    [feedback, closure && `보완 사유 ${closure.issue} · 종료 근거 ${closure.evidence}`,
+      finance && `증분원가 ${finance.cost} · 지급·수금 ${finance.cash}`].filter(Boolean).join(' · '));
   form.reset();
   renderReview();
-  notice.textContent = `공급안 버전 ${active.version}의 ${role} 결정을 기록했습니다.`;
+  return `공급안 버전 ${active.version}의 ${role} 결정을 기록했습니다.`;
+}
+
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const value = (id) => byId(`department-${id}`).value.trim();
+  const notice = byId('department-notice');
+  try {
+    notice.textContent = saveDepartmentDecision({ role: value('role'), person: value('person'), decision: value('decision'),
+      feedback: value('feedback'), closureEvidence: value('closure-evidence'),
+      cost: value('finance-cost'), cash: value('finance-cash') });
+  } catch (error) {
+    notice.textContent = error.message;
+  }
 });
 
 byId('department-edit').addEventListener('click', () => {

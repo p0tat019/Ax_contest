@@ -1,5 +1,6 @@
 import { explainCodes } from '../scripts/gemini-safe.mjs';
 import { assistantPrompt, feedbackPrompt } from '../scripts/gemini-prompts.mjs';
+import { sendWorkMail } from './work-mail.mjs';
 
 const modules = new Set(['dashboard', 'intake', 'capacity', 'review', 'proposal']);
 const statuses = new Set(['not_started', 'intake_reviewed', 'calculation_ready', 'existing_shortage',
@@ -70,13 +71,14 @@ export default {
     if (allowedOrigin) headers.set('Access-Control-Allow-Origin', origin);
     const send = (status, error) => new Response(JSON.stringify({ error }), { status, headers });
     const path = new URL(request.url).pathname;
-    if (!Object.hasOwn(routes, path)) return send(404, '요청 경로를 확인하세요.');
+    const mail = path === '/api/work-mail';
+    if (!mail && !Object.hasOwn(routes, path)) return send(404, '요청 경로를 확인하세요.');
     if (!allowedOrigin) return send(403, '허용된 앱에서 요청하세요.');
     const route = routes[path];
     if (request.method === 'OPTIONS') {
       if (request.headers.get('Access-Control-Request-Method') !== 'POST') return send(405, 'POST 요청만 사용할 수 있습니다.');
       headers.set('Access-Control-Allow-Methods', 'POST');
-      headers.set('Access-Control-Allow-Headers', 'Content-Type, X-Corevia-Token');
+      headers.set('Access-Control-Allow-Headers', mail ? 'Content-Type, X-Corevia-Mail-Key' : 'Content-Type, X-Corevia-Token');
       headers.set('Access-Control-Max-Age', '600');
       return new Response(null, { status: 204, headers });
     }
@@ -84,6 +86,7 @@ export default {
     if (request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') {
       return send(415, 'JSON 요청만 사용할 수 있습니다.');
     }
+    if (mail) return sendWorkMail(request, env, origin, headers);
     const token = request.headers.get('X-Corevia-Token');
     const ip = request.headers.get('CF-Connecting-IP');
     if (!token || token.length > 2048 || !ip) return send(403, '브라우저 확인이 필요합니다.');

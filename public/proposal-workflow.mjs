@@ -1,4 +1,6 @@
 import { dateKey, proposalIssues } from './proposal-checks.mjs';
+import { renderSupplyDecision } from './supply-decision-view.mjs';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs';
 import { changeExperience, experienceMode, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 
 const byId = (id) => document.getElementById(id);
@@ -49,6 +51,11 @@ export function recordDepartmentDecision(version, role, person, decision, feedba
 
 export function recordSupplyCheck(version, { week, product, owner, person, evidence }) {
   record(`공급안 ${version} · ${week} ${product} · ${owner} ${person} 확인 완료 · ${evidence}`);
+}
+
+export function recordShippingReply(week, person, detail) {
+  record(`물류 회신 · ${week} · ${person} · ${detail}`);
+  renderList('workflow-history', history);
 }
 
 export function setWorkflowIntake(recordedIntake) {
@@ -104,12 +111,47 @@ function blockReason() {
   if (!review.plans.some(({ revised }) => revised.proposal > 0)) return '제안할 물량이 있는 공급안을 계산하세요.';
   if (proposalIssues(intake.conditions, review.plans).length) return '확정 납품표와 공급안의 날짜·수량·출고 근거를 확인하세요.';
   const pending = roles.filter((role) => review.reviews.get(role)?.decision !== 'accepted');
+  if (review.requiresFinanceEvidence && !pending.includes('재무·전략')
+    && !review.reviews.get('재무·전략')?.finance) return '재무 담당자가 증분원가와 지급·수금 근거를 확인하세요.';
   return pending.length ? `${pending.join(', ')} 검수 수락이 필요합니다.` : '';
 }
 
 function render() {
   const blocked = blockReason();
   const issues = intake && review ? proposalIssues(intake.conditions, review.plans) : [];
+  const isApproved = !blocked && approval?.decision === 'approved';
+  const held = Boolean(blocked || approval?.decision === 'returned' || approval?.decision === 'declined');
+  const change = pendingBuyerChange();
+  const finance = review?.reviews.get('재무·전략')?.finance;
+  setInboxTasks('buyer', change ? [{
+    id: `buyer/${change.id ?? change.content}`, owner: '영업', title: '변경 납품표와 바이어 증빙 확인', href: '#buyer-change-edit',
+  }] : []);
+  setInboxTasks('approval', !blocked && !approval ? [{
+    id: `approval/${review.version}`, owner: 'CEO·이사회', title: `공급안 ${review.version} 참여 결정`,
+    detail: `제안 ${review.plans.reduce((sum, row) => sum + row.revised.proposal, 0).toLocaleString('ko-KR')} EA · 기존 납품 부족 없음 · 부서 검수 완료`
+      + (finance ? `\n증분원가 근거 · ${finance.cost}\n지급·수금 근거 · ${finance.cash}` : '')
+      + `\n결제 ${intake.conditions.payment || '미확인'} · 지연 페널티 ${intake.conditions.penalty || '미확인'} · 회수 비용 ${intake.conditions.recall || '미확인'}`,
+    fields: [textField('person', '승인 담당자'), choiceField('decision', '입찰 결정',
+      [['approved', '참여 승인'], ['returned', '보완 요청'], ['declined', '참여 보류']]),
+    textField('reason', '승인 조건 또는 결정 사유', { multiline: true }),
+    textField('conditionalScope', '미확인 입찰 조건의 허용 근거와 범위', { multiline: true, optional: true })],
+    submit(values) {
+      saveApproval(values);
+      return values.decision === 'approved' ? '참여 결정을 기록했습니다. 승인과 모의 제출에서 제안서를 확인하세요.'
+        : '결정을 기록했습니다. 승인 화면에서 후속 조치를 확인하세요.';
+    },
+  }] : []);
+  const handoff = isApproved && !submitted
+    ? { id: `submission/${approval.version}`, title: '승인된 제안서 확인 및 모의 제출', href: '#proposal-document' }
+    : submitted && !reply && !change
+      ? { id: `reply/${submitted.version}`, title: '바이어 회신 기록', href: '#buyer-reply-form' }
+      : null;
+  setInboxTasks('handoff', handoff ? [{ ...handoff, owner: '영업' }] : []);
+  renderSupplyDecision(byId('proposal-decision-card'), review && !review.needsRecalculation ? review.plans : [], {
+    state: isApproved ? 'approved' : held ? 'blocked' : 'review',
+    label: isApproved ? '참여 승인' : held ? '확약 보류' : '승인 결정 대기',
+    reason: blocked || approval?.reason || '부서 검수를 마친 현재 버전의 입찰 참여를 결정하세요.',
+  });
   renderList('proposal-issues', issues);
   const report = byId('decision-report');
   const heading = document.createElement('h3');
@@ -121,6 +163,7 @@ function render() {
     ['제안량 · 신규 미충족', review && !review.needsRecalculation ? `${sum((row) => row.revised.proposal)} · ${sum((row) => row.unmetRequest)}` : '계산 필요'],
     ['기존 납기 위험', review && !review.needsRecalculation ? `기존 부족 ${sum((row) => row.revised.existingShortage)} · 입력된 확정 약속 기준` : '검증 필요'],
     ['경제성', review && !review.needsRecalculation ? byId('finance-comparison').textContent : '생산계획 계산 후 재무 검토'],
+    ...(finance && !review.needsRecalculation ? [['재무 확인 근거', `증분원가 ${finance.cost} · 지급·수금 ${finance.cash}`]] : []),
     ['계약 위험', intake ? `결제 ${intake.conditions.payment || '미확인'} · 지연 페널티 ${intake.conditions.penalty || '미확인'} · 회수 비용 ${intake.conditions.recall || '미확인'}` : '입찰 요청서 확인 필요'],
     ['미해결 항목', issues.length ? issues.join(' · ') : blocked || '현재 승인 차단 항목 없음'],
     ['부서 검수', review ? roles.map((role) => `${role} ${review.reviews.get(role)?.decision === 'accepted' ? '수락' : '확인 필요'}`).join(' · ') : '검수 대기'],
@@ -205,13 +248,9 @@ function render() {
   nextLink.textContent = outcome === 'return' ? '보완할 단계 열기' : outcome === 'done' ? '회신 기록 열기' : '다음 작업 열기';
 }
 
-approvalForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  if (blockReason() || approval) return;
-  const person = value('approver');
-  const decision = value('approval-decision');
-  const reason = value('approval-reason');
-  const conditionalScope = value('conditional-scope');
+function saveApproval({ person, decision, reason, conditionalScope }) {
+  const blocked = blockReason();
+  if (blocked || approval) throw new Error(blocked || '이미 결정한 공급안입니다.');
   const conditions = intake.conditions;
   const openConditions = [
     ...(!dateKey(conditions.deadline) ? ['정확한 입찰 마감일'] : []),
@@ -219,12 +258,10 @@ approvalForm.addEventListener('submit', (event) => {
     ...(!conditions.splitDelivery ? ['분할 납품 조건'] : []),
   ];
   if (!person || !reason || !['approved', 'returned', 'declined'].includes(decision)) {
-    notice.textContent = '승인 담당자와 결정 사유를 입력하세요.';
-    return;
+    throw new Error('승인 담당자와 결정 사유를 입력하세요.');
   }
   if (decision === 'approved' && openConditions.length && !conditionalScope) {
-    notice.textContent = `${openConditions.join(', ')} 미확인. 접수 조건을 보완하거나 바이어가 허용한 조건부 제안의 근거와 범위를 입력하세요.`;
-    return;
+    throw new Error(`${openConditions.join(', ')} 미확인. 접수 조건을 보완하거나 바이어가 허용한 조건부 제안의 근거와 범위를 입력하세요.`);
   }
   const document = [
     `${review.customer || '입찰 검토 건'} 입찰 제안 · 공급안 버전 ${review.version}`,
@@ -238,11 +275,24 @@ approvalForm.addEventListener('submit', (event) => {
     ...review.plans.filter(({ revised }) => revised.proposal > 0).map(({ week, deliveryDate, product, plant, line, revised, shipping }) =>
       `${product} · ${plant}/${line} · ${revised.proposal.toLocaleString('ko-KR')} EA · 생산 주차 ${week} · 납품 예정일 ${deliveryDate} · 물류 근거 ${shipping.source}`),
   ].join('\n');
-  approval = { version: review.version, person, decision, reason, document };
+  const nextApproval = { version: review.version, person, decision, reason, document };
+  if (!saveState('proposal', { reviewKey, approval: nextApproval, submitted, reply, changeRequest })) {
+    throw new Error('입찰 결정을 저장하지 못했습니다.');
+  }
+  approval = nextApproval;
   record(`공급안 ${review.version} · ${person} · ${{approved:'참여 승인', returned:'보완 요청', declined:'참여 보류'}[decision]} · ${reason}`);
-  persistProposal();
   notice.textContent = '';
   render();
+}
+
+approvalForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  try {
+    saveApproval({ person: value('approver'), decision: value('approval-decision'),
+      reason: value('approval-reason'), conditionalScope: value('conditional-scope') });
+  } catch (error) {
+    notice.textContent = error.message;
+  }
 });
 
 byId('proposal-submit').addEventListener('click', () => {

@@ -15,11 +15,13 @@ const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, options) => {
   if (url === 'https://oauth2.googleapis.com/token') {
     oauthCalls++;
+    assert.equal(options.redirect, 'manual');
     assert.deepEqual(Object.fromEntries(options.body), { client_id: 'client', client_secret: 'secret',
       refresh_token: 'refresh', grant_type: 'refresh_token' });
     return Response.json({ access_token: 'mock-access' });
   }
   if (url === 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send') {
+    assert.equal(options.redirect, 'manual');
     assert.equal(options.headers.Authorization, 'Bearer mock-access');
     const mime = Buffer.from(JSON.parse(options.body).raw, 'base64url').toString('utf8');
     mailCalls.push(mime);

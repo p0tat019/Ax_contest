@@ -14,7 +14,7 @@ export async function sendGmailWorkMail(env, { to, subject, text, html, task }) 
       refresh_token: env.GOOGLE_REFRESH_TOKEN.trim(),
       grant_type: 'refresh_token',
     }),
-    redirect: 'error',
+    redirect: 'manual',
     signal: AbortSignal.timeout(6000),
   });
   const token = await tokenResponse.json().catch(() => null);
@@ -37,7 +37,7 @@ export async function sendGmailWorkMail(env, { to, subject, text, html, task }) 
       method: 'POST',
       headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ raw }),
-      redirect: 'error',
+      redirect: 'manual',
       signal: AbortSignal.timeout(7000),
     });
     if (response.ok) return 'accepted';

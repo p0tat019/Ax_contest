@@ -208,25 +208,18 @@ export function BidTrial() {
   function randomize() { replay(String(crypto.getRandomValues(new Uint32Array(1))[0])); }
 
   useEffect(() => {
-    const button = document.getElementById('dashboard-trial-start');
     const followupButton = document.getElementById('dashboard-followup-start');
-    function startWithDefaults(step) {
+    function startFollowup() {
       setSeed('');
       setRunSeed(null);
       setBaseline(null);
       setInput(initial);
-      calculate(initial, false, step);
+      calculate(initial, false, firstFollowup);
     }
-    const start = () => startWithDefaults(0);
-    const startFollowup = () => startWithDefaults(firstFollowup);
-    button.disabled = false;
     followupButton.disabled = false;
-    button.addEventListener('click', start);
     followupButton.addEventListener('click', startFollowup);
     return () => {
-      button.removeEventListener('click', start);
       followupButton.removeEventListener('click', startFollowup);
-      button.disabled = true;
       followupButton.disabled = true;
     };
   }, []);

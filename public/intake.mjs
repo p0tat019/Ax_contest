@@ -1,8 +1,8 @@
 import { example, extractConditions, fields, pendingTasks } from './intake-rules.mjs';
 import { lookupEvidence } from './intake-lookup.mjs';
-import { setCapacityIntake } from './capacity.mjs?v=followup-demo-1';
-import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=buyer-followup-1';
-import { experienceMode, loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
+import { setCapacityIntake } from './capacity.mjs?v=hands-on-demo-1';
+import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=hands-on-demo-1';
+import { experienceMode, handsOnExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 import { deliverySchedule } from './proposal-checks.mjs';
 
 const byId = (id) => document.getElementById(id);
@@ -312,10 +312,20 @@ function renderBuyerChange() {
   const context = byId('buyer-change-context');
   context.hidden = !pending;
   byId('buyer-change-decision').hidden = !pending;
+  byId('hands-on-buyer-evidence').hidden = !pending || !handsOnExperience;
   context.textContent = pending
     ? `${pending.owner} · ${pending.deadline}까지 확인 · ${pending.content} · 아래 납품표와 새 증빙을 확인한 뒤 영업 검수를 저장하세요.`
     : '';
 }
+
+byId('hands-on-buyer-evidence').addEventListener('click', () => {
+  if (!handsOnExperience || !pendingBuyerChange()) return;
+  inputs.get('deliverySchedule').value = '2026-08-02 PL-01 1500; 2026-08-02 PL-02 500';
+  const proof = inputs.get('deliveryEvidence');
+  proof.value = 'SIM-BUYER-002 · 모의 바이어 감량 동의 회신';
+  proof.dispatchEvent(new Event('input', { bubbles: true }));
+  inputs.get('deliverySchedule').focus();
+});
 
 window.addEventListener('corevia:buyer-change', () => {
   if (!saved) return;
@@ -340,8 +350,10 @@ try {
 }
 
 request.addEventListener('input', () => {
-  supplyContext = undefined;
-  byId('intake-screening').hidden = true;
+  if (!handsOnExperience) {
+    supplyContext = undefined;
+    byId('intake-screening').hidden = true;
+  }
   review.hidden = true;
   ++lookupVersion;
   decision.value = '';
@@ -371,10 +383,18 @@ byId('example').addEventListener('click', () => {
   extractDraft();
 });
 byId('extract').addEventListener('click', extractDraft);
-document.addEventListener('corevia:open-bid', ({ detail: { source, summary, context, sample } }) => {
+document.addEventListener('corevia:open-bid', ({ detail: { source, summary, context, sample, rawOnly } }) => {
   supplyContext = context;
   byId('intake-screening-summary').textContent = summary;
   byId('intake-screening').hidden = false;
+  if (handsOnExperience && rawOnly) {
+    request.value = source;
+    request.dispatchEvent(new Event('input', { bubbles: true }));
+    byId('reviewer').value = '체험 영업 담당자';
+    notice.textContent = '예시를 채웠습니다. 필요한 값을 수정하고 조건 추출·내부 자료 조회를 누르세요.';
+    request.focus();
+    return;
+  }
   if (request.value === source && !review.hidden) return;
   if (request.value !== source) {
     request.value = source;

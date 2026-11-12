@@ -1,5 +1,5 @@
 import { dateKey, proposalIssues } from './proposal-checks.mjs';
-import { changeExperience, experienceMode, loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
+import { changeExperience, experienceMode, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 
 const byId = (id) => document.getElementById(id);
 const value = (id) => byId(id).value.trim();

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
-import { changeExperience, experienceMode, loadState } from '../public/workflow-storage.mjs';
+import { changeExperience, experienceMode, handsOnExperience, loadState } from '../public/workflow-storage.mjs';
 import { bids, weeks } from './supply-overview-data.mjs';
 import { CustomerTrends, DecisionOverview, ProductionOverview, ScenarioLab } from './decision-views.jsx';
 import { SupplyOverview } from './supply-overview.jsx';
@@ -85,10 +85,13 @@ function Workspace() {
     return () => window.removeEventListener('hashchange', update);
   }, []);
   const [, title] = pages.find(([key]) => key === view);
-  const sample = () => {
+  const sample = (rawOnly = false) => {
     const bid = bids[0];
+    const source = rawOnly
+      ? `${bid.source}\n입찰 마감: 2026-07-22\n초도 납품일: 2026-08-02\n확정 납품표: 2026-08-02 PL-01 10000; 2026-08-02 PL-02 6000\n납품표 확인 근거: 체험용 바이어 회신 SIM-BUYER-001\n분할 납품 조건: 일괄 납품`
+      : bid.source;
     document.dispatchEvent(new CustomEvent('corevia:open-bid', { detail: {
-      source: bid.source, summary: '5분 체험 · 모의 바이어 회신 포함', sample: true,
+      source, summary: '모의 입찰서 · 바이어 회신 포함', sample: true, rawOnly,
       context: { customer: bid.id, route: bid.route, selectedWeek: weeks[0].start, weeks },
     } }));
   };
@@ -96,8 +99,11 @@ function Workspace() {
     if (!experienceMode || !['normal', 'change'].includes(new URLSearchParams(location.search).get('case'))
       || hash() !== 'intake-request' || loadState('intake')) return;
     if (byId('review-form').dataset.ready) sample();
-    else document.addEventListener('corevia:intake-ready', sample, { once: true });
-    return () => document.removeEventListener('corevia:intake-ready', sample);
+    else {
+      const loadSample = () => sample();
+      document.addEventListener('corevia:intake-ready', loadSample, { once: true });
+      return () => document.removeEventListener('corevia:intake-ready', loadSample);
+    }
   }, []);
   return <>
     {portal('workspace-nav', <>
@@ -108,7 +114,7 @@ function Workspace() {
       </nav>
     </>)}
     {portal('workspace-header', <div className="context-bar">
-      <div><strong>{title}</strong><span>{experienceMode ? '5분 체험 · 이 탭에만 저장' : 'W05 · 입찰 검토'}</span></div>
+      <div><strong>{title}</strong><span>{experienceMode ? '체험 · 이 탭에만 저장' : 'W05 · 입찰 검토'}</span></div>
       <div>
         {!experienceMode && workflow.record && <a href="?experience=1#dashboard-heading">5분 체험</a>}
         <button type="button" className="secondary" onClick={() => openAssistant(title)}>✦ 업무 어시스턴트</button>
@@ -116,7 +122,9 @@ function Workspace() {
     </div>)}
     {portal('workflow-map', <WorkflowMap workflow={workflow} view={view} anchor={anchor} />)}
     {portal('experience-guide', experienceMode ? <div className="guide-strip">
-      <div><strong>{changeExperience ? '조건 변경·재검수 체험' : '정상 제출 체험'}</strong><p>{view === 'intake' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
+      <div><strong>{handsOnExperience ? '직접 입력 테스트' : changeExperience ? '조건 변경·재검수 체험' : '정상 제출 체험'}</strong><p>{handsOnExperience && anchor === 'intake-request' && !workflow.record
+        ? '입찰서를 직접 입력하거나 예시를 채우세요. 조건 추출을 누르면 방금 입력한 내용에서 검수 초안을 만듭니다.'
+        : view === 'intake' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
         : view === 'capacity' ? '확정 납품표를 불러와 계산하고 제품 행의 계산 근거를 확인하세요.'
           : view === 'proposal' ? changeExperience && workflow.submitted
             ? '모의 바이어 변경 회신을 채워 저장한 뒤, 바뀐 납품표와 증빙을 확인하세요.'
@@ -124,9 +132,13 @@ function Workspace() {
             : '모의 자료로 시작해 계산 근거를 확인하고 승인까지 체험하세요.'}</p></div>
       <a href="?#dashboard-heading">일반 검토로 돌아가기</a>
     </div> : null)}
+    {portal('hands-on-intake', handsOnExperience ? <div className="hands-on-input">
+      <button type="button" className="secondary" onClick={() => sample(true)}>체험용 입찰서 채우기</button>
+      <small>채운 값은 수정할 수 있습니다. 조건 추출을 눌러 처리하세요.</small>
+    </div> : null)}
     {portal('start-options', !workflow.record && <div className="guide-strip">
       <div><strong>어떤 방식으로 시작하시겠어요?</strong><p>체험 기록은 이 탭에만 저장됩니다.</p></div>
-      {experienceMode ? <a className="primary-link" href="#intake-request" onClick={sample}>모의 자료 불러오기</a>
+      {experienceMode ? <a className="primary-link" href="#intake-request" onClick={() => sample(handsOnExperience)}>모의 자료 불러오기</a>
         : <><a className="primary-link" href="?experience=1#dashboard-heading">예시 데이터로 5분 체험</a><a href="#intake-request">내 입찰 자료로 시작</a></>}
     </div>)}
     {portal('decision-overview', <DecisionOverview {...workflow} />)}

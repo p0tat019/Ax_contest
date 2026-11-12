@@ -1,6 +1,6 @@
 import { drafts, modules } from './assistant-skills.mjs';
 import { requestAssistant } from './ai-client.mjs';
-import { loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
+import { loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 
 const byId = (id) => document.getElementById(id);
 const form = byId('assistant-form');

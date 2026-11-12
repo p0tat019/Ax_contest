@@ -1,8 +1,10 @@
 const parameters = new URLSearchParams(typeof location === 'undefined' ? '' : location.search);
 export const experienceMode = parameters.get('experience') === '1';
-export const changeExperience = experienceMode && parameters.get('case') === 'change';
+export const handsOnExperience = experienceMode && parameters.get('case') === 'hands-on';
+export const changeExperience = handsOnExperience || (experienceMode && parameters.get('case') === 'change');
 const storage = () => experienceMode ? sessionStorage : localStorage;
-const storageKey = (key) => `corevia.${changeExperience ? 'experience.change.' : experienceMode ? 'experience.' : ''}${key}.v1`;
+const scope = handsOnExperience ? 'experience.hands-on.' : changeExperience ? 'experience.change.' : experienceMode ? 'experience.' : '';
+const storageKey = (key) => `corevia.${scope}${key}.v1`;
 
 export function loadState(key) {
   try {

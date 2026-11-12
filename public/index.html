@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
     <link rel="stylesheet" href="./intake.css">
-    <link rel="stylesheet" href="./workspace.css?v=followup-demo-1">
-    <script type="module" src="./workspace.js?v=followup-demo-1"></script>
-    <script type="module" src="./intake.mjs?v=followup-demo-1"></script>
-    <script type="module" src="./assistant.mjs?v=buyer-followup-1"></script>
+    <link rel="stylesheet" href="./workspace.css?v=hands-on-demo-1">
+    <script type="module" src="./workspace.js?v=hands-on-demo-1"></script>
+    <script type="module" src="./intake.mjs?v=hands-on-demo-1"></script>
+    <script type="module" src="./assistant.mjs?v=hands-on-demo-1"></script>
   </head>
   <body data-workspace="dashboard">
     <div id="workspace-root"></div>
@@ -17,8 +17,8 @@
       <header id="workspace-header"></header>
       <section class="trial-launch" data-view="dashboard" aria-label="모의 입찰 테스트">
         <div class="guide-strip">
-          <div><strong>모의 입찰 테스트</strong><p>입찰 계산부터 바이어 회신·보완·재검수까지 확인하세요.</p></div>
-          <button id="dashboard-trial-start" type="button" aria-haspopup="dialog" disabled>테스트 진행하기</button>
+          <div><strong>모의 입찰 테스트</strong><p>실제 입력란에서 값을 바꾸고 계산·검수·회신을 직접 저장해 보세요.</p></div>
+          <a class="primary-link" id="dashboard-trial-start" href="?experience=1&amp;case=hands-on#intake-request">테스트 진행하기</a>
           <button id="dashboard-followup-start" type="button" class="secondary" aria-haspopup="dialog" disabled>변경·보완 시연 보기</button>
           <a href="?experience=1&amp;case=normal#intake-request">정상 제출 체험</a>
           <a href="?experience=1&amp;case=change#intake-request">조건 변경·재검수 체험</a>
@@ -71,6 +71,7 @@
           <small>모의 주간 비교입니다. 실제 납기·수량과 공급·출고 근거는 상세 검수에서 확인하세요.</small>
         </div>
         <label for="request">RFP 원문 또는 요청 요약</label>
+        <div id="hands-on-intake"></div>
         <textarea id="request" rows="7" placeholder="고객, 품목, 물량, 일정과 계약 조건을 붙여 넣으세요."></textarea>
         <p>예시는 편집 중인 요청과 추출 초안을 바꿉니다. 저장된 검수는 새로 저장할 때 갱신됩니다.</p>
         <button type="button" id="extract">조건 추출·내부 자료 조회</button>
@@ -107,6 +108,7 @@
           <fieldset id="buyer-change-edit" class="buyer-change-edit">
             <legend>바이어 납품표와 증빙</legend>
             <p id="buyer-change-context" role="status" hidden></p>
+            <button type="button" class="secondary" id="hands-on-buyer-evidence" hidden>체험용 납품표·증빙 채우기</button>
             <div id="buyer-change-fields" class="fields"></div>
             <a href="#reviewer" id="buyer-change-decision" hidden>영업 검수 결정으로 이동 →</a>
           </fieldset>

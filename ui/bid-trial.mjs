@@ -1,11 +1,36 @@
-import { compareCapacity, expansionAvailable } from '../public/capacity-plan.mjs';
+import { compareCapacity, expansionAvailable, supplyChecks } from '../public/capacity-plan.mjs';
 import { extractConditions } from '../public/intake-rules.mjs';
 import { deliverySchedule, proposalIssues } from '../public/proposal-checks.mjs';
+import { weeks } from './supply-overview-data.mjs';
 
 const week = '2026-07-27';
 const delivery = '2026-08-02';
 export const defaults = { capacity1: 100, capacity2: 100, existing1: 30, existing2: 30,
   demand1: 30, demand2: 30, extra: 0, shipping: 80, booked: 10, expansion: 0, start: delivery };
+
+export function runFollowupExample() {
+  const exampleWeek = weeks[0];
+  const shipping = exampleWeek.shipments.find(({ route }) => route === '수출 출고');
+  const before = { ...shipping, source: '모의 물류 대시보드' };
+  const after = { ...before, booked: 54000, source: 'SIM-LOG-002' };
+  const previousShipping = new Map([[week, before]]);
+  const revisedShipping = new Map([[week, after]]);
+  const rows = exampleWeek.products.map(({ code, line, stock, hold, output, recurring, reserved }, index) => {
+    const [plant, lineId] = line.split('/').map((part) => part.trim());
+    return { week, deliveryDate: delivery, product: code, plant, line: lineId,
+      capacity: stock - hold + output, commitments: recurring + reserved,
+      requested: index === 0 ? 10000 : 6000, additional: 0, reduction: 0, source: '모의 납품표' };
+  });
+  const revisedRows = rows.map((row, index) => ({ ...row, requested: index === 0 ? 1500 : 500 }));
+  const previous = compareCapacity(rows, previousShipping);
+  const limited = compareCapacity(rows, revisedShipping);
+  const revised = compareCapacity(revisedRows, revisedShipping);
+  const capacityShortage = compareCapacity(rows.map((row) => row.product === 'PL-02'
+    ? { ...row, reduction: row.capacity - row.commitments + 1 } : row), previousShipping);
+  return { before, after, previous, limited, revised,
+    logisticsChecks: supplyChecks(limited),
+    productionChecks: supplyChecks(capacityShortage).filter(({ owner }) => owner !== '물류') };
+}
 
 export function prepareTrial(input) {
   const values = {};

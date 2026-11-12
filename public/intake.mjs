@@ -1,6 +1,6 @@
 import { example, extractConditions, fields, pendingTasks } from './intake-rules.mjs';
 import { lookupEvidence } from './intake-lookup.mjs';
-import { setCapacityIntake } from './capacity.mjs?v=buyer-followup-1';
+import { setCapacityIntake } from './capacity.mjs?v=followup-demo-1';
 import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=buyer-followup-1';
 import { experienceMode, loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
 import { deliverySchedule } from './proposal-checks.mjs';

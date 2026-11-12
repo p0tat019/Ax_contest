@@ -1,5 +1,5 @@
 import { requestFeedback } from './ai-client.mjs';
-import { capacityTrace, deliveryWeek } from './capacity-plan.mjs';
+import { supplyChecks } from './capacity-plan.mjs?v=followup-demo-1';
 import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=buyer-followup-1';
 import { loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
 
@@ -19,22 +19,6 @@ const applyButton = byId('feedback-apply');
 
 function persistReview() {
   saveState('department', { ...latest, reviews: [...latest.reviews] });
-}
-
-function supplyChecks(plans) {
-  return plans.flatMap((row) => {
-    const { production } = capacityTrace(row, plans);
-    const checks = [];
-    if (row.revised.existingShortage > 0 || production < row.requested) {
-      checks.push(['조달', row.week, '원자재 입고일과 생산 가능 수량 확인'],
-        ['품질', row.week, '검사 대기·보류 수량과 출고 승인 예정일 확인']);
-    }
-    if (!row.shipping || row.shipping.restricted > 0 || row.shipping.shortage > 0) {
-      const reason = row.shipping?.restricted > 0 ? `출고 한도로 신규 배정 ${row.shipping.restricted.toLocaleString('ko-KR')} EA 감소 · ` : '';
-      checks.push(['물류', deliveryWeek(row.deliveryDate) || row.week, `${reason}확정 예약과 추가 출고 가능량 확인`]);
-    }
-    return checks.map(([owner, week, task]) => ({ owner, week, product: row.product, task }));
-  });
 }
 
 function renderSupplyChecks() {

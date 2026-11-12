@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { capacityTrace } from '../public/capacity-plan.mjs';
-import { defaults, generateTrial, prepareTrial, runGoldenTrials, runTrial } from './bid-trial.mjs';
+import { defaults, generateTrial, prepareTrial, runFollowupExample, runGoldenTrials, runTrial } from './bid-trial.mjs';
 
 const fields = [
   ['capacity1', '기초 공급능력'], ['capacity2', '더마 공급능력'],
@@ -14,14 +14,54 @@ const initial = Object.fromEntries(Object.keys(defaults).map((key) => [key, ''])
 const fieldName = (key) => fields.find(([name]) => name === key)?.[1] ?? '증설 가동일';
 const ea = (quantity) => `${quantity.toLocaleString('ko-KR')} EA`;
 const productName = (code) => code === 'PL-01' ? '기초' : '더마';
-const sceneLabels = ['입찰 접수', '기존 납품 우선 배정', '신규 공급안 계산', '검증과 다음 작업'];
+const calculationLabels = ['입찰 접수', '기존 납품 우선 배정', '신규 공급안 계산', '계산 검증'];
+const followupLabels = ['변경 회신', '담당자 확인 작업', '보완 종료·재검수'];
+const firstFollowup = calculationLabels.length;
+const lastScene = firstFollowup + followupLabels.length - 1;
+const sumSupply = (rows) => rows.reduce((sum, row) => sum + row.revised.proposal, 0);
 
-function TrialPlayback({ result, onClose, onShowResult }) {
+function FollowupScene({ step, example }) {
+  const { before, after, previous, limited, revised, logisticsChecks, productionChecks } = example;
+  if (step === 0) return <>
+    <h3>바이어의 변경 회신을 저장하면 납품표와 증빙이 함께 열립니다</h3>
+    <p>아래는 별도 체험용 입찰입니다. 기존 승인을 해제하고 영업 담당자가 두 입력란을 같은 화면에서 검토합니다.</p>
+    <dl className="trial-player-facts">
+      <div><dt>확정 납품표 수정</dt><dd>{ea(sumSupply(previous))} → {ea(sumSupply(revised))}</dd>
+        <small>{revised[0].deliveryDate} · {revised.map((row) => `${productName(row.product)} ${ea(row.requested)}`).join(' · ')}</small></div>
+      <div><dt>납품표 확인 근거</dt><dd>SIM-BUYER-002</dd><small>바이어 감량 동의 회신 · 새 증빙을 저장할 때까지 승인 차단</small></div>
+    </dl>
+  </>;
+  if (step === 1) return <>
+    <h3>출고 한도가 줄면 물류 확인 작업이 열립니다</h3>
+    <p>예약이 {ea(before.booked)}에서 {ea(after.booked)}로 증가해, 계산 가능한 신규 공급량은 {ea(sumSupply(limited))}입니다.</p>
+    <ul className="trial-followup-checks">
+      {logisticsChecks.map(({ week, product, owner, task }) => <li key={product}><strong>{week} 주차 · {productName(product)} · {owner}</strong><span>{task}</span></li>)}
+    </ul>
+    <p className="trial-player-note">물류 담당자는 회신 번호와 확인 결과를 저장합니다. 생산 부족 사례에서는 {productionChecks.map(({ owner, task }) => `${owner}에 ${task}`).join(', ')} 작업이 생깁니다.</p>
+  </>;
+  return <>
+    <h3>보완을 닫은 근거를 남기고 새 공급안을 검수합니다</h3>
+    <dl className="trial-player-facts">
+      <div><dt>같은 버전을 다시 수락할 때</dt><dd>종료 근거 필수</dd><small>예시 · SIM-LOG-002에서 기존 예약 54,000 EA와 출고 잔여 2,000 EA 확인</small></div>
+      <div><dt>납품표와 물량이 바뀌면</dt><dd>{ea(sumSupply(revised))} 새 공급안</dd><small>영업·생산관리·재무 검수 후 CEO가 재승인 여부를 결정</small></div>
+    </dl>
+    <div className="trial-experience-links" aria-label="업무 체험">
+      <a href="?experience=1&amp;case=normal#intake-request">정상 제출 체험 →</a>
+      <a className="primary-link" href="?experience=1&amp;case=change#intake-request">조건 변경·재검수 직접 체험 →</a>
+    </div>
+    <p className="trial-player-note">시연 화면의 예시입니다. 직접 체험에서 기록 저장과 승인 결정을 할 수 있습니다.</p>
+  </>;
+}
+
+function TrialPlayback({ result, initialStep, onClose, onShowResult }) {
   const dialog = useRef(null);
   const scene = useRef(null);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(initialStep);
+  const [example] = useState(runFollowupExample);
   const [paused, setPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const last = sceneLabels.length - 1;
+  const inFollowup = step >= firstFollowup;
+  const offset = inFollowup ? firstFollowup : 0;
+  const sceneLabels = inFollowup ? followupLabels : calculationLabels;
   useEffect(() => {
     dialog.current.showModal();
   }, []);
@@ -29,10 +69,10 @@ function TrialPlayback({ result, onClose, onShowResult }) {
     scene.current.scrollTop = 0;
   }, [step]);
   useEffect(() => {
-    if (paused || step === last) return;
-    const timer = window.setTimeout(() => setStep(step + 1), 4200);
+    if (paused || step === lastScene) return;
+    const timer = window.setTimeout(() => setStep(step + 1), inFollowup ? 6500 : 4200);
     return () => window.clearTimeout(timer);
-  }, [paused, step, last]);
+  }, [paused, step, inFollowup]);
 
   function move(index) {
     setPaused(true);
@@ -46,9 +86,13 @@ function TrialPlayback({ result, onClose, onShowResult }) {
       <div><p>Corevia · 모의 입찰 시연</p><h2 id="trial-player-heading">입찰 요청은 어떻게 공급안이 되나요?</h2></div>
       <button type="button" className="secondary" aria-label="시연 닫기" onClick={() => dialog.current.close()}>닫기</button>
     </header>
+    <div className="trial-player-chapters" aria-label="시연 구간">
+      <button type="button" className="secondary" aria-pressed={!inFollowup} onClick={() => move(0)}>입찰·공급 계산</button>
+      <button type="button" className="secondary" aria-pressed={inFollowup} onClick={() => move(firstFollowup)}>변경·보완</button>
+    </div>
     <ol className="trial-player-steps" aria-label="모의 실행 단계">
-      {sceneLabels.map((label, index) => <li key={label}><button type="button" onClick={() => move(index)}
-        aria-current={index === step ? 'step' : undefined}>
+      {sceneLabels.map((label, index) => <li key={label}><button type="button" onClick={() => move(offset + index)}
+        aria-current={offset + index === step ? 'step' : undefined}>
         <span aria-hidden="true">{index + 1}</span>{label}</button></li>)}
     </ol>
     <div className="trial-player-scene" ref={scene} aria-live="polite" aria-atomic="true"><div className="trial-scene-content" key={step}>
@@ -84,7 +128,7 @@ function TrialPlayback({ result, onClose, onShowResult }) {
             {plan.unmetRequest > 0 && <strong className="trial-player-warning">요청량 중 {ea(plan.unmetRequest)} 미충족</strong>}</div>;
         })}</dl>
       </>}
-      {step === last && <>
+      {step === firstFollowup - 1 && <>
         <h3>{action}</h3>
         <p>공급안의 배정량을 독립 계산과 대조했습니다. 모의 검증이 끝나면 담당자가 근거를 보고 결정합니다.</p>
         <dl className="trial-player-facts">
@@ -92,16 +136,14 @@ function TrialPlayback({ result, onClose, onShowResult }) {
           {plans.map((plan, index) => <div key={plan.product}><dt>{productName(plan.product)} · 배정량</dt><dd>{ea(plan.revised.proposal)}</dd><small>독립 계산 {ea(expected[index])}</small></div>)}
         </dl>
         <p className="trial-player-note">모의 실행 완료 · 담당자 승인과 제출 기록은 생성되지 않았습니다.</p>
-        <div className="trial-experience-links" aria-label="업무 체험">
-          <a href="?experience=1&amp;case=normal#intake-request">정상 제출 체험 →</a>
-          <a href="?experience=1&amp;case=change#intake-request">조건 변경·재검수 체험 →</a>
-        </div>
+        <button type="button" className="secondary" onClick={() => move(firstFollowup)}>변경·보완 시연 보기 →</button>
       </>}
+      {inFollowup && <FollowupScene step={step - firstFollowup} example={example} />}
     </div></div>
     <footer className="trial-player-footer">
       <div>
         <button type="button" className="secondary" disabled={step === 0} onClick={() => move(step - 1)}>이전</button>
-        {step === last ? <button type="button" className="secondary" onClick={() => { setStep(0); setPaused(false); }}>다시 재생</button>
+        {step === lastScene ? <button type="button" className="secondary" onClick={() => { setStep(initialStep); setPaused(false); }}>다시 재생</button>
           : <><button type="button" className="secondary" onClick={() => setPaused(!paused)}>{paused ? '계속 재생' : '일시정지'}</button>
             <button type="button" className="secondary" onClick={() => move(step + 1)}>다음</button></>}
       </div>
@@ -121,9 +163,10 @@ export function BidTrial() {
   const [dirty, setDirty] = useState(false);
   const [invalid, setInvalid] = useState(null);
   const [playing, setPlaying] = useState(false);
+  const [initialStep, setInitialStep] = useState(0);
   const resultHeading = useRef(null);
 
-  function calculate(values, generated) {
+  function calculate(values, generated, step = 0) {
     setError('');
     setInvalid(null);
     const prepared = prepareTrial(values);
@@ -140,6 +183,7 @@ export function BidTrial() {
     try {
       const next = runTrial(prepared.values);
       setResult({ ...next, values: prepared.values, filled: prepared.filled });
+      setInitialStep(step);
       setPlaying(true);
       setDirty(false);
       if (generated) setBaseline(next);
@@ -165,18 +209,25 @@ export function BidTrial() {
 
   useEffect(() => {
     const button = document.getElementById('dashboard-trial-start');
-    function startWithDefaults() {
+    const followupButton = document.getElementById('dashboard-followup-start');
+    function startWithDefaults(step) {
       setSeed('');
       setRunSeed(null);
       setBaseline(null);
       setInput(initial);
-      calculate(initial, false);
+      calculate(initial, false, step);
     }
+    const start = () => startWithDefaults(0);
+    const startFollowup = () => startWithDefaults(firstFollowup);
     button.disabled = false;
-    button.addEventListener('click', startWithDefaults);
+    followupButton.disabled = false;
+    button.addEventListener('click', start);
+    followupButton.addEventListener('click', startFollowup);
     return () => {
-      button.removeEventListener('click', startWithDefaults);
+      button.removeEventListener('click', start);
+      followupButton.removeEventListener('click', startFollowup);
       button.disabled = true;
+      followupButton.disabled = true;
     };
   }, []);
 
@@ -223,7 +274,7 @@ export function BidTrial() {
     {result && !dirty && <div className="trial-results">
       <div className="section-heading"><h3 ref={resultHeading} tabIndex={-1}>이번 테스트 실행 내역</h3>
         <button type="button" className="secondary" onClick={() => setPlaying(true)}>시연 다시 보기</button></div>
-      {playing && createPortal(<TrialPlayback result={result} onClose={() => setPlaying(false)}
+      {playing && createPortal(<TrialPlayback result={result} initialStep={initialStep} onClose={() => setPlaying(false)}
         onShowResult={showResult} />, document.body)}
       <p className="supply-note">{result.filled.length ? `기본값 적용 · ${result.filled.map((key) => `${fieldName(key)} ${defaults[key]}`).join(' · ')}` : '입력한 값으로 계산했습니다.'}</p>
       <h3>{result.action}</h3>

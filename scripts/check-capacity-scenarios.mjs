@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import { capacityTrace, compareCapacity, expansionAvailable, shippingRecords, verifyShippingEvidence } from '../public/capacity-plan.mjs';
 import { scenarios } from '../public/capacity-scenarios.mjs';
 import { deliverySchedule, proposalIssues } from '../public/proposal-checks.mjs';
-import { defaults, generateTrial, prepareTrial, runGoldenTrials, runTrial } from '../ui/bid-trial.mjs';
+import { defaults, generateTrial, prepareTrial, runFollowupExample, runGoldenTrials, runTrial } from '../ui/bid-trial.mjs';
+
+const followup = runFollowupExample();
+assert.deepEqual(followup.previous.map(({ revised }) => revised.proposal), [10000, 6000]);
+assert.deepEqual(followup.limited.map(({ revised }) => revised.proposal), [2000, 0]);
+assert.deepEqual(followup.revised.map(({ revised }) => revised.proposal), [1500, 500]);
+assert.deepEqual(followup.logisticsChecks.map(({ owner }) => owner), ['물류', '물류']);
+assert.deepEqual(followup.productionChecks.map(({ owner }) => owner), ['조달', '품질']);
 
 for (const scenario of scenarios) {
   if (scenario.expectedError) {

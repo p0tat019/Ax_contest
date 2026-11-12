@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
     <link rel="stylesheet" href="./intake.css">
-    <link rel="stylesheet" href="./workspace.css?v=buyer-followup-1">
-    <script type="module" src="./workspace.js?v=buyer-followup-1"></script>
-    <script type="module" src="./intake.mjs?v=buyer-followup-1"></script>
+    <link rel="stylesheet" href="./workspace.css?v=followup-demo-1">
+    <script type="module" src="./workspace.js?v=followup-demo-1"></script>
+    <script type="module" src="./intake.mjs?v=followup-demo-1"></script>
     <script type="module" src="./assistant.mjs?v=buyer-followup-1"></script>
   </head>
   <body data-workspace="dashboard">
@@ -17,8 +17,9 @@
       <header id="workspace-header"></header>
       <section class="trial-launch" data-view="dashboard" aria-label="모의 입찰 테스트">
         <div class="guide-strip">
-          <div><strong>모의 입찰 테스트</strong><p>자료 입력 없이 입찰 접수부터 공급안 검증까지 4단계로 확인하세요.</p></div>
+          <div><strong>모의 입찰 테스트</strong><p>입찰 계산부터 바이어 회신·보완·재검수까지 확인하세요.</p></div>
           <button id="dashboard-trial-start" type="button" aria-haspopup="dialog" disabled>테스트 진행하기</button>
+          <button id="dashboard-followup-start" type="button" class="secondary" aria-haspopup="dialog" disabled>변경·보완 시연 보기</button>
           <a href="?experience=1&amp;case=normal#intake-request">정상 제출 체험</a>
           <a href="?experience=1&amp;case=change#intake-request">조건 변경·재검수 체험</a>
           <a href="#trial-heading">랜덤 조건·직접 입력 →</a>

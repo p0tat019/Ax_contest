@@ -1,7 +1,7 @@
 import { capacityTrace, compareCapacity, deliveryWeek, readQuantity, shippingRecords, verifyShippingEvidence } from './capacity-plan.mjs';
 import { deliverySchedule } from './proposal-checks.mjs';
 import { scenarios } from './capacity-scenarios.mjs';
-import { setReviewPlan } from './department-review.mjs?v=buyer-followup-1';
+import { setReviewPlan } from './department-review.mjs?v=followup-demo-1';
 import { changeExperience, loadState, saveState } from './workflow-storage.mjs?v=buyer-followup-1';
 
 const byId = (id) => document.getElementById(id);

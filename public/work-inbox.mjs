@@ -49,6 +49,8 @@ function openTask(task) {
     return;
   }
   byId('work-task-heading').textContent = `${task.owner} · ${task.title}`;
+  response.dataset.trialTask = task.id.split('/', 1)[0];
+  response.dataset.trialOwner = task.owner;
   if (!/^#work-mail-[a-f0-9]{64}$/.test(location.hash)) location.hash = 'work-task';
   fields.replaceChildren(...task.fields.map(({ name, label, options, multiline, optional, quantity }) => {
     const field = document.createElement('div');

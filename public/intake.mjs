@@ -1,7 +1,7 @@
 import { example, extractConditions, fields, pendingTasks } from './intake-rules.mjs';
 import { lookupEvidence } from './intake-lookup.mjs';
-import { setCapacityIntake } from './capacity.mjs?v=workflow-pages-1';
-import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=workflow-pages-1';
+import { setCapacityIntake } from './capacity.mjs?v=guided-trial-1';
+import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=guided-trial-1';
 import { experienceMode, handsOnExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 import { deliverySchedule } from './proposal-checks.mjs';
 
@@ -313,7 +313,7 @@ function renderBuyerChange() {
   const context = byId('buyer-change-context');
   context.hidden = !pending;
   byId('buyer-change-decision').hidden = !pending;
-  byId('hands-on-buyer-evidence').hidden = !pending || !handsOnExperience;
+  byId('hands-on-buyer-evidence').hidden = !pending || !experienceMode;
   byId('buyer-change-fill-status').hidden = true;
   context.textContent = pending
     ? `${pending.owner} · ${pending.deadline}까지 확인 · ${pending.content} · 아래 납품표와 새 증빙을 확인한 뒤 영업 검수를 저장하세요.`
@@ -321,7 +321,7 @@ function renderBuyerChange() {
 }
 
 byId('hands-on-buyer-evidence').addEventListener('click', () => {
-  if (!handsOnExperience || !pendingBuyerChange()) return;
+  if (!experienceMode || !pendingBuyerChange()) return;
   inputs.get('deliverySchedule').value = '2026-08-02 PL-01 1500; 2026-08-02 PL-02 500';
   const proof = inputs.get('deliveryEvidence');
   proof.value = 'SIM-BUYER-002 · 모의 바이어 감량 동의 회신';

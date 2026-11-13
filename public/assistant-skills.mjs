@@ -1,6 +1,6 @@
 export const modules = {
   intake: { title: '입찰 접수', anchor: 'intake-request', context: ['review-summary', 'draft-tasks'] },
-  capacity: { title: '생산능력 계산', anchor: 'capacity', context: ['capacity-intake', 'capacity-summary'] },
+  capacity: { title: '생산능력 계산', anchor: 'capacity-entry', context: ['capacity-intake', 'capacity-summary'] },
   review: { title: '부서 검수', anchor: 'department-review', context: ['department-status', 'department-next'] },
   proposal: { title: '승인·모의 제출', anchor: 'proposal-workflow', context: ['proposal-status'] },
   dashboard: { title: '현재 입찰 절차', anchor: 'intake-request', context: ['workflow-steps', 'workflow-next'] },

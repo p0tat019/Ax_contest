@@ -44,6 +44,7 @@ const assets = new Map([
   ['/workspace.css', ['workspace.css', 'text/css']],
   ['/intake.css', ['intake.css', 'text/css']],
   ['/intake.mjs', ['intake.mjs', 'text/javascript']],
+  ['/trial-fill.mjs', ['trial-fill.mjs', 'text/javascript']],
   ['/intake-rules.mjs', ['intake-rules.mjs', 'text/javascript']],
   ['/intake-lookup.mjs', ['intake-lookup.mjs', 'text/javascript']],
   ['/intake-data.json', ['intake-data.json', 'application/json']],

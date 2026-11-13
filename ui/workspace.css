@@ -201,6 +201,13 @@ meter::-webkit-meter-optimum-value { background: #338d70; border-radius: 8px; }
 #work-mail-status { margin-bottom: 0; }
 .work-mail-flow { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-inline-start: 23px; margin: 12px 0; }
 .work-mail-flow li { padding-inline-end: 6px; }
+.trial-paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 14px; }
+.trial-paths article { display: flex; flex-direction: column; align-items: flex-start; }
+.trial-paths h2 { margin: 0; font-size: 18px; }
+.trial-paths p { color: var(--muted); margin-bottom: 16px; }
+.trial-paths article > :last-child { margin-top: auto; }
+.trial-fill { margin-bottom: 10px; border-color: #bfd9cc; background: #edf6f1; }
+.trial-fill-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; }
 #assistant-panel #assistant-grounding { padding: 12px; background: var(--soft); font-size: 14px; }
 
 @media (max-width: 860px) {

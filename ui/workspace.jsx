@@ -131,7 +131,7 @@ function Workspace() {
     {portal('workspace-header', <div className="context-bar">
       <div><strong>{title}</strong><span>{experienceMode ? '체험 · 이 탭에만 저장' : 'W05 · 입찰 검토'}</span></div>
       <div>
-        {!experienceMode && workflow.record && <a href="?experience=1&case=hands-on#intake-request">5분 체험</a>}
+        {!experienceMode && view !== 'demo' && <a href="#trial-launch">모의 입찰 열기</a>}
         <button type="button" className="secondary" onClick={() => openAssistant(title)}>✦ 업무 어시스턴트</button>
       </div>
     </div>)}
@@ -141,7 +141,7 @@ function Workspace() {
         ? '입찰서를 직접 입력하거나 예시를 채우세요. 조건 추출을 누르면 방금 입력한 내용에서 검수 초안을 만듭니다.'
         : view === 'review' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
         : view === 'capacity' ? '확정 납품표를 불러와 계산하고 제품 행의 계산 근거를 확인하세요.'
-          : view === 'reply' && changeExperience ? '모의 바이어 변경 회신을 채워 저장한 뒤, 바뀐 납품표와 증빙을 확인하세요.'
+          : view === 'reply' && changeExperience ? '접수 확인으로 마치거나, 감량 요청을 기록해 재검수로 돌아갈 수 있습니다.'
           : view === 'proposal' ? '세 부서가 검수한 공급안의 입찰 참여를 결정하세요.'
             : '모의 자료로 시작해 계산 근거를 확인하고 승인까지 체험하세요.'}</p></div>
       <a href="?#intake-request">일반 검토로 돌아가기</a>

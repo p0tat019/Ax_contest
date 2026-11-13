@@ -136,7 +136,7 @@ function TrialPlayback({ result, initialStep, onClose, onShowResult }) {
           {plans.map((plan, index) => <div key={plan.product}><dt>{productName(plan.product)} · 배정량</dt><dd>{ea(plan.revised.proposal)}</dd><small>독립 계산 {ea(expected[index])}</small></div>)}
         </dl>
         <p className="trial-player-note">모의 실행 완료 · 담당자 승인과 제출 기록은 생성되지 않았습니다.</p>
-        <button type="button" className="secondary" onClick={() => move(firstFollowup)}>변경·보완 시연 보기 →</button>
+        <button type="button" className="secondary" onClick={() => move(firstFollowup)}>출고 변경과 재검수 과정 보기 →</button>
       </>}
       {inFollowup && <FollowupScene step={step - firstFollowup} example={example} />}
     </div></div>
@@ -243,7 +243,7 @@ export function BidTrial() {
     <p>모의 입찰서에서 조건을 추출하고 실제 공급계획 계산과 납품표 검증을 실행합니다. 승인·제출 기록에는 반영되지 않습니다.</p>
     <div className="trial-actions">
       <button type="button" onClick={randomize}>새 랜덤 입찰 실행</button>
-      <button type="button" className="secondary" onClick={() => calculate(input, false)}>테스트 진행하기</button>
+      <button type="button" className="secondary" onClick={() => calculate(input, false)}>현재 입력으로 공급량 계산</button>
       <form onSubmit={(event) => { event.preventDefault(); replay(seed); }}>
         <label>재현 번호<input value={seed} onChange={(event) => setSeed(event.target.value)} inputMode="numeric" maxLength={10} /></label>
         <button className="secondary" type="submit">같은 입력 재현</button>

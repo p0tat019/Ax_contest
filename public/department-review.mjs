@@ -1,8 +1,8 @@
 import { requestFeedback } from './ai-client.mjs';
 import { supplyChecks } from './capacity-plan.mjs?v=followup-demo-1';
-import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=workflow-pages-1';
-import { loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
-import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=workflow-pages-1';
+import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=guided-trial-1';
+import { experienceMode, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=guided-trial-1';
 
 const byId = (id) => document.getElementById(id);
 const section = byId('department-review-content');
@@ -53,6 +53,17 @@ function renderSupplyChecks() {
     const button = document.createElement('button');
     button.type = 'submit';
     button.textContent = '확인 완료 기록';
+    if (experienceMode) {
+      const example = document.createElement('button');
+      example.type = 'button';
+      example.className = 'secondary trial-fill';
+      example.textContent = '공급 제약 확인 예시 채우기';
+      example.addEventListener('click', () => {
+        inputs[0].value = '체험 ' + check.owner + ' 담당자';
+        inputs[1].value = 'SIM-CHECK-001 · ' + check.task + ' 결과를 모의 자료와 대조';
+      });
+      form.prepend(example);
+    }
     const status = document.createElement('p');
     status.setAttribute('role', 'status');
     form.append(button, status);

@@ -9,7 +9,9 @@
     "predev": "npm run build",
     "dev": "node --env-file-if-exists=.env.local scripts/dev-server.mjs",
     "data:refresh": "node scripts/prepare-intake-data.mjs",
-    "test:scenarios": "node scripts/check-capacity-scenarios.mjs"
+    "test:scenarios": "node scripts/check-capacity-scenarios.mjs",
+    "test:browser": "npm run build && node scripts/check-workflow-browser.mjs",
+    "test": "npm run test:scenarios && node scripts/check-worker-security.mjs && npm run test:browser"
   },
   "engines": {
     "node": ">=22"
@@ -21,5 +23,8 @@
     "esbuild": "^0.28.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.65.0"
   }
 }

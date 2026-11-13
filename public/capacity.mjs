@@ -3,10 +3,10 @@ import { verifyAllocation } from './capacity-verification.mjs';
 import { renderSupplyDecision } from './supply-decision-view.mjs';
 import { deliverySchedule } from './proposal-checks.mjs';
 import { scenarios } from './capacity-scenarios.mjs';
-import { setReviewPlan } from './department-review.mjs?v=workflow-pages-1';
-import { recordShippingReply } from './proposal-workflow.mjs?v=workflow-pages-1';
+import { setReviewPlan } from './department-review.mjs?v=guided-trial-1';
+import { recordShippingReply } from './proposal-workflow.mjs?v=guided-trial-1';
 import { changeExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
-import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=workflow-pages-1';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=guided-trial-1';
 
 const byId = (id) => document.getElementById(id);
 const form = byId('capacity-form');
@@ -186,6 +186,7 @@ export function setCapacityIntake(record) {
   const carriedShipping = sameBid ? shippingInput.value : null;
   intake = record;
   byId('experience-shipping-change').hidden = !changeExperience || !record.buyerChangeId;
+  byId('trial-capacity-logistics').hidden = !changeExperience || !record.buyerChangeId;
   const accepted = record.decision === 'accepted' || !record.decision;
   lines = accepted ? (record.evidence?.lines ?? []) : [];
   form.hidden = !lines.length;

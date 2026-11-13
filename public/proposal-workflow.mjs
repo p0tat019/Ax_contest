@@ -1,6 +1,6 @@
 import { dateKey, proposalIssues } from './proposal-checks.mjs';
 import { renderSupplyDecision } from './supply-decision-view.mjs';
-import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=workflow-pages-1';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=guided-trial-1';
 import { changeExperience, experienceMode, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 
 const byId = (id) => document.getElementById(id);

@@ -13,6 +13,18 @@ const reason = byId('reason');
 const notice = byId('notice');
 const saveNotice = byId('save-notice');
 const inputs = new Map();
+const exampleFilled = new Map();
+const salesReviewExample = {
+  deadline: '2026-07-22',
+  firstDelivery: '2026-08-02',
+  deliverySchedule: '2026-08-02 PL-01 10000; 2026-08-02 PL-02 6000',
+  deliveryEvidence: 'SIM-BUYER-001 · 체험용 바이어 납품표 확인',
+  splitDelivery: '일괄 납품 · 체험용 바이어 회신',
+  payment: 'USD · 인도 후 30일 이내 지급 (체험용)',
+  penaltyBasis: '지연된 납품분 금액 기준 · 누적 한도 10% (체험용)',
+  weeklyCapacity: '7월 27일 주차 유효 공급량 PL-01 194,000 EA / PL-02 59,000 EA (체험용)',
+  existing: '7월 27일 주차 기존 납품·예약 PL-01 134,000 EA / PL-02 43,000 EA 우선 반영 (체험용)',
+};
 const fieldStatuses = new Map();
 const decisions = { accepted: '검수 수락', 'needs-information': '보완 요청', rejected: '반려' };
 const buyerConditions = new Map([
@@ -97,7 +109,8 @@ function renderChecks(conditions) {
     const needsInput = pendingFields.has(key);
     status.textContent = needsInput
       ? (conditions[key] ? '직접 보완 필요' : '직접 입력 필요')
-      : conditions[key] === extracted[key] ? '요청서에서 자동 추출' : '담당자 입력';
+      : exampleFilled.get(key) === conditions[key] && exampleFilled.has(key) ? '체험 예시 입력'
+        : conditions[key] === extracted[key] ? '요청서에서 자동 추출' : '담당자 입력';
     inputs.get(key).closest('.condition-field').dataset.needsInput = String(needsInput);
   }
 }
@@ -167,6 +180,7 @@ for (const [key, name] of fields) {
 }
 
 function showDraft(conditions) {
+  exampleFilled.clear();
   extracted = extractConditions(request.value);
   for (const [key, input] of inputs) input.value = conditions[key] ?? '';
   decision.value = '';
@@ -320,16 +334,40 @@ function renderBuyerChange() {
     : '';
 }
 
-byId('hands-on-buyer-evidence').addEventListener('click', () => {
-  if (!experienceMode || !pendingBuyerChange()) return;
-  inputs.get('deliverySchedule').value = '2026-08-02 PL-01 1500; 2026-08-02 PL-02 500';
-  const proof = inputs.get('deliveryEvidence');
-  proof.value = 'SIM-BUYER-002 · 모의 바이어 감량 동의 회신';
-  proof.dispatchEvent(new Event('input', { bubbles: true }));
+export function fillSalesReviewExample({ changedOnly = false } = {}) {
+  if (!experienceMode || review.hidden) return false;
+  const conditions = readConditions();
+  const products = new Set(conditions.products?.match(/\bPL-\d{2}\b/gi)?.map((code) => code.toUpperCase()));
+  if (conditions.customer?.toUpperCase() !== 'C-201' || products.size !== 2 || !products.has('PL-01') || !products.has('PL-02')) {
+    byId('save-notice').textContent = '이 체험 예시는 C-201의 PL-01·PL-02 입찰에 적용됩니다.';
+    return false;
+  }
+  const changed = request.value === saved?.source && Boolean(pendingBuyerChange());
+  if (changedOnly && !changed) return false;
+  const values = changed ? {
+    ...salesReviewExample,
+    deliverySchedule: '2026-08-02 PL-01 1500; 2026-08-02 PL-02 500',
+    deliveryEvidence: 'SIM-BUYER-002 · 모의 바이어 감량 동의 회신',
+  } : salesReviewExample;
+  for (const [key, value] of Object.entries(values)) {
+    const revisedDelivery = changed && ['deliverySchedule', 'deliveryEvidence'].includes(key);
+    if (changedOnly && !revisedDelivery) continue;
+    if (!revisedDelivery && inputs.get(key).closest('.condition-field').dataset.needsInput !== 'true') continue;
+    inputs.get(key).value = value;
+    exampleFilled.set(key, value);
+  }
+  decision.value = '';
+  updateDecisionRequirements();
+  renderChecks(readConditions());
   const status = byId('buyer-change-fill-status');
-  status.textContent = '납품표와 새 증빙을 채웠습니다. 값을 확인한 뒤 영업 검수를 저장하세요.';
+  status.textContent = changedOnly ? '수정 납품표와 회신 증빙 예시를 채웠습니다.'
+    : '확인이 필요한 공급 조건을 체험 예시로 채웠습니다. 내용을 확인한 뒤 검수 결과를 저장하세요.';
   status.hidden = false;
-  inputs.get('deliverySchedule').focus();
+  return true;
+}
+
+byId('hands-on-buyer-evidence').addEventListener('click', () => {
+  if (fillSalesReviewExample({ changedOnly: true })) inputs.get('deliverySchedule').focus();
 });
 
 window.addEventListener('corevia:buyer-change', () => {
@@ -421,6 +459,9 @@ document.addEventListener('corevia:open-bid', ({ detail: { source, summary, cont
   } else extractDraft();
 });
 byId('review-form').addEventListener('input', (event) => {
+  for (const [key, input] of inputs) {
+    if (input === event.target && exampleFilled.get(key) !== input.value) exampleFilled.delete(key);
+  }
   if ([...inputs.values()].includes(event.target)) {
     decision.value = '';
     updateDecisionRequirements();

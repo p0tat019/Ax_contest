@@ -1,4 +1,5 @@
 import { experienceMode, loadState } from './workflow-storage.mjs?v=hands-on-demo-1';
+import { fillSalesReviewExample } from './intake.mjs?v=complete-sales-example-1';
 
 const byId = (id) => document.getElementById(id);
 const roles = ['영업', '생산관리', '재무·전략'];
@@ -27,8 +28,7 @@ function reviewExample(role) {
 
 const actions = {
   sales(form) {
-    byId('hands-on-buyer-evidence').click();
-    fill(form, { reviewer: sales.person, decision: sales.decision, reason: sales.reason });
+    if (fillSalesReviewExample()) fill(form, { reviewer: sales.person, decision: sales.decision, reason: sales.reason });
   },
   capacity() {
     const confirmed = byId('capacity-confirmed');

@@ -104,6 +104,27 @@ async function verifyWorkflow(page, base) {
   await page.getByRole('button', { name: '시연 닫기' }).click();
   await action(field('dashboard-trial-start'));
   await view('intake');
+  await action(field('example'));
+  await view('review');
+  const condition = (label) => page.locator('#review-form').getByLabel(label, { exact: true });
+  assert.equal(await condition('확정 납품표').inputValue(), '');
+  await condition('납기 지연 페널티').fill('월 2%');
+  await fillExample('sales');
+  const supplied = {
+    '확정 납품표': /PL-01 10000.*PL-02 6000/,
+    '납품표 확인 근거': /SIM-BUYER-001/,
+    '입찰 마감': /^2026-07-22$/,
+    '초도 납품일': /^2026-08-02$/,
+    '분할 납품 조건': /일괄 납품/,
+    '결제 통화 및 조건': /USD.*30일/,
+    '페널티 산정 기준과 한도': /10%/,
+    '주간 실효능력': /194,000/,
+    '기존 납품 약속 확인': /134,000/,
+  };
+  for (const [label, expected] of Object.entries(supplied)) assert.match(await condition(label).inputValue(), expected);
+  assert.equal(await condition('납기 지연 페널티').inputValue(), '월 2%');
+  assert.equal(await field('review-task-count').innerText(), '0건');
+  await open('intake-request', 'intake');
   await action(page.locator('#hands-on-intake button'));
   await action(field('extract'));
   await view('review');
@@ -158,6 +179,8 @@ async function verifyWorkflow(page, base) {
   assert.equal(await field('work-inbox-response').isVisible(), false);
   await open('buyer-change-edit', 'review');
   await fillExample('sales');
+  assert.match(await condition('확정 납품표').inputValue(), /PL-01 1500.*PL-02 500/);
+  assert.match(await condition('납품표 확인 근거').inputValue(), /SIM-BUYER-002/);
   await submit('review-form');
   await view('capacity');
   await open('work-inbox', 'inbox');

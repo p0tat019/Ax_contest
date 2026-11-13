@@ -3,24 +3,31 @@ import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
 import { changeExperience, experienceMode, handsOnExperience, loadState } from '../public/workflow-storage.mjs';
 import { bids, weeks } from './supply-overview-data.mjs';
-import { CustomerTrends, DecisionOverview, ProductionOverview, ScenarioLab } from './decision-views.jsx';
-import { SupplyOverview } from './supply-overview.jsx';
+import { CustomerTrends, ProductionOverview, ScenarioLab } from './decision-views.jsx';
 import { BidTrial } from './bid-trial-view.jsx';
 import './workspace.css';
 
-const pages = [
-  ['dashboard', '종합 현황', 'dashboard-heading', '◫'],
-  ['intake', '고객·계약', 'customer-history', '▤'],
-  ['capacity', '생산계획', 'capacity', '▥'],
-  ['scenario', '시나리오 분석', 'scenario-heading', '◈'],
-  ['proposal', '검수·승인', 'proposal-workflow', '✓'],
+const pages = {
+  settings: '담당자·메일 등록', inbox: '업무함', task: '배정된 작업', demo: '모의 입찰',
+  intake: '입찰 접수', review: '영업 검수', 'intake-result': '영업 검수 결과', history: '고객 자료',
+  production: '생산 근거', capacity: '공급안 계산', calculation: '공급안 계산 결과',
+  department: '부서 검수', checks: '공급 제약 확인', proposal: '참여 승인',
+  submission: '모의 제출', reply: '바이어 회신', audit: '처리 이력', scenario: '시나리오 분석',
+};
+const nav = [
+  ['intake', '입찰 접수', 'intake-request'], ['inbox', '업무함', 'work-inbox'],
+  ['settings', '담당자·메일 등록', 'work-mail-panel'], ['audit', '처리 이력', 'workflow-history-page'],
+  ['demo', '모의 입찰', 'trial-launch'],
 ];
-const aliases = { review: 'intake', reviewer: 'intake', result: 'intake', 'intake-request': 'intake', 'buyer-change-edit': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
-  'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal', 'proposal-document': 'proposal',
-  'buyer-reply-form': 'proposal', 'trial-heading': 'scenario', 'work-mail-panel': 'dashboard' };
+const aliases = { 'dashboard-heading': 'intake', dashboard: 'intake', intake: 'intake',
+  capacity: 'capacity', 'scenario-heading': 'scenario', assistant: 'intake', 'assistant-heading': 'intake' };
 const byId = (id) => document.getElementById(id);
 const hash = () => window.location.hash.slice(1);
-const viewForHash = () => pages.find(([id, , anchor]) => id === hash() || anchor === hash())?.[0] ?? aliases[hash()] ?? 'dashboard';
+const viewForHash = () => {
+  const anchor = hash();
+  if (/^work-mail-[a-f0-9]{64}$/.test(anchor)) return 'task';
+  return byId(anchor)?.closest('section[data-view]')?.dataset.view ?? (Object.hasOwn(aliases, anchor) ? aliases[anchor] : 'intake');
+};
 
 function useWorkflow() {
   const snapshot = () => {
@@ -55,7 +62,6 @@ function useWorkflow() {
 
 function Workspace() {
   const [view, setView] = useState(viewForHash);
-  const [anchor, setAnchor] = useState(hash);
   const [intakeStatus, setIntakeStatus] = useState(() => byId('review-form').dataset.ready ? 'ready' : 'loading');
   const intakeReady = intakeStatus === 'ready';
   const workflow = useWorkflow();
@@ -76,27 +82,24 @@ function Workspace() {
   }, []);
   useEffect(() => {
     const update = () => {
-      if (hash() === 'assistant-heading' || hash() === 'assistant') {
-        history.replaceState(null, '', `#${pages.find(([key]) => key === document.body.dataset.workspace)?.[2] ?? 'dashboard-heading'}`);
-        openAssistant(pages.find(([key]) => key === document.body.dataset.workspace)?.[1] ?? '종합 현황');
-        return;
-      }
+      if (['assistant-heading', 'assistant'].includes(hash())) {
+        history.replaceState(null, '', '#intake-request');
+        openAssistant('입찰 접수');
+      } else if (dialog.open) dialog.close();
       const next = viewForHash();
-      if (dialog.open) dialog.close();
       document.body.dataset.workspace = next;
       setView(next);
-      setAnchor(hash());
-      const target = Object.hasOwn(aliases, hash()) ? byId(hash()) : null;
-      if (target?.closest('#capacity-entry')) byId('capacity-entry').open = true;
-      if (hash() === 'workflow-history') target.closest('details').open = true;
-      requestAnimationFrame(() => target && !target.closest('[hidden]')
-        ? target.scrollIntoView({ block: 'start' }) : window.scrollTo(0, 0));
+      const target = byId(hash());
+      requestAnimationFrame(() => {
+        if (target && !target.closest('[hidden]') && target.matches('fieldset, input')) target.scrollIntoView({ block: 'start' });
+        else window.scrollTo(0, 0);
+      });
     };
     update();
     window.addEventListener('hashchange', update);
     return () => window.removeEventListener('hashchange', update);
   }, []);
-  const [, title] = pages.find(([key]) => key === view);
+  const title = pages[view];
   const sample = (rawOnly = false) => {
     const bid = bids[0];
     const source = rawOnly
@@ -119,54 +122,43 @@ function Workspace() {
   }, []);
   return <>
     {portal('workspace-nav', <>
-      <a className="workspace-brand" href="#dashboard-heading"><span className="brand-mark" aria-hidden="true">C</span><span><strong>Corevia</strong><small>약속계획</small></span></a>
+      <a className="workspace-brand" href="#intake-request"><span className="brand-mark" aria-hidden="true">C</span><span><strong>Corevia</strong><small>약속계획</small></span></a>
       <nav aria-label="주 메뉴">
-        {pages.map(([key, label, anchor, icon]) => <a key={key} href={`#${anchor}`} aria-current={view === key ? 'page' : undefined}>
-          <span className="nav-icon" aria-hidden="true">{icon}</span>{label}</a>)}
+        {nav.map(([key, label, anchor]) => <a key={key} href={`#${anchor}`} aria-current={view === key ? 'page' : undefined}>
+          {label}</a>)}
       </nav>
     </>)}
     {portal('workspace-header', <div className="context-bar">
       <div><strong>{title}</strong><span>{experienceMode ? '체험 · 이 탭에만 저장' : 'W05 · 입찰 검토'}</span></div>
       <div>
-        {!experienceMode && workflow.record && <a href="?experience=1#dashboard-heading">5분 체험</a>}
+        {!experienceMode && workflow.record && <a href="?experience=1&case=hands-on#intake-request">5분 체험</a>}
         <button type="button" className="secondary" onClick={() => openAssistant(title)}>✦ 업무 어시스턴트</button>
       </div>
     </div>)}
-    {portal('workflow-map', <WorkflowMap workflow={workflow} view={view} anchor={anchor} />)}
+    {portal('workflow-map', ['settings', 'task', 'inbox', 'audit', 'demo'].includes(view) ? null : <WorkflowMap workflow={workflow} view={view} />)}
     {portal('experience-guide', experienceMode ? <div className="guide-strip">
-      <div><strong>{handsOnExperience ? '직접 입력 테스트' : changeExperience ? '조건 변경·재검수 체험' : '정상 제출 체험'}</strong><p>{handsOnExperience && anchor === 'intake-request' && !workflow.record
+      <div><strong>{handsOnExperience ? '직접 입력 테스트' : changeExperience ? '조건 변경·재검수 체험' : '정상 제출 체험'}</strong><p>{handsOnExperience && view === 'intake' && !workflow.record
         ? '입찰서를 직접 입력하거나 예시를 채우세요. 조건 추출을 누르면 방금 입력한 내용에서 검수 초안을 만듭니다.'
-        : view === 'intake' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
+        : view === 'review' ? '내부 자료와 모의 회신을 읽고 영업 검수 수락을 저장하세요.'
         : view === 'capacity' ? '확정 납품표를 불러와 계산하고 제품 행의 계산 근거를 확인하세요.'
-          : view === 'proposal' ? changeExperience && workflow.submitted
-            ? '모의 바이어 변경 회신을 채워 저장한 뒤, 바뀐 납품표와 증빙을 확인하세요.'
-            : '세 부서가 같은 버전을 수락한 뒤 참여 승인과 모의 제출을 기록하세요.'
+          : view === 'reply' && changeExperience ? '모의 바이어 변경 회신을 채워 저장한 뒤, 바뀐 납품표와 증빙을 확인하세요.'
+          : view === 'proposal' ? '세 부서가 검수한 공급안의 입찰 참여를 결정하세요.'
             : '모의 자료로 시작해 계산 근거를 확인하고 승인까지 체험하세요.'}</p></div>
-      <a href="?#dashboard-heading">일반 검토로 돌아가기</a>
+      <a href="?#intake-request">일반 검토로 돌아가기</a>
     </div> : null)}
     {portal('hands-on-intake', handsOnExperience ? <div className="hands-on-input">
       <button type="button" className="secondary" disabled={!intakeReady} onClick={() => sample(true)}>체험용 입찰서 채우기</button>
       <small role="status">{intakeReady ? '채운 값은 수정할 수 있습니다. 조건 추출을 눌러 처리하세요.'
         : intakeStatus === 'delayed' ? '입력 화면 연결이 지연되고 있습니다. 계속 지연되면 이 페이지를 새로고침하세요.' : '입력 화면을 준비하고 있습니다.'}</small>
     </div> : null)}
-    {portal('start-options', !workflow.record && <div className="guide-strip">
-      <div><strong>어떤 방식으로 시작하시겠어요?</strong><p>체험 기록은 이 탭에만 저장됩니다.</p></div>
-      {experienceMode ? <button type="button" disabled={!intakeReady} onClick={() => {
-        sample(handsOnExperience);
-        location.hash = 'intake-request';
-      }}>모의 자료 불러오기</button>
-        : <><a className="primary-link" href="?experience=1#dashboard-heading">예시 데이터로 5분 체험</a><a href="#intake-request">내 입찰 자료로 시작</a></>}
-    </div>)}
-    {portal('decision-overview', <DecisionOverview {...workflow} />)}
     {portal('trial-heading', <BidTrial />)}
-    {portal('supply-overview', <SupplyOverview intakeReady={intakeReady} />)}
     {portal('customer-trends', <CustomerTrends />)}
     {portal('production-overview', <ProductionOverview plans={workflow.plans} />)}
     {portal('scenario-view', <ScenarioLab />)}
   </>;
 }
 
-function WorkflowMap({ workflow, view, anchor }) {
+function WorkflowMap({ workflow, view }) {
   const { record, plans, reviewed, approved, submitted, replied, next, href, outcome } = workflow;
   const steps = [
     ['접수·자료 확인', '#intake-request', record?.decision === 'accepted'],
@@ -181,8 +173,7 @@ function WorkflowMap({ workflow, view, anchor }) {
   const destinationLabel = steps[destination]?.[0] ?? '다음 작업';
   const returnRequired = outcome === 'return';
   const showLink = href && outcome !== 'stop';
-  const current = view === 'intake' ? 0 : view === 'capacity' ? 1
-    : view === 'proposal' ? anchor === 'department-review' ? 2 : ['proposal-document', 'buyer-reply-form'].includes(anchor) ? 4 : 3 : -1;
+  const current = { intake: 0, review: 0, 'intake-result': 0, capacity: 1, calculation: 1, department: 2, checks: 2, proposal: 3, submission: 4, reply: 4 }[view];
   return <nav aria-label="입찰 진행 단계" className="workflow-map">
     <ol>{steps.map(([label, target, complete], index) => <li key={target}>
       <a href={target} aria-current={current === index ? 'step' : undefined}
@@ -197,7 +188,7 @@ function WorkflowMap({ workflow, view, anchor }) {
       </a>
     </li>)}</ol>
     <p>{view === 'scenario' ? '테스트 화면 · 승인 기록과 분리' : next}
-      {view === 'scenario' ? <a href="#dashboard-heading">종합 현황으로 돌아가기 →</a>
+      {view === 'scenario' ? <a href="#intake-request">입찰 접수로 돌아가기 →</a>
         : showLink && <a href={href}>{returnRequired ? `${destinationLabel} 단계로 돌아가기 ↶` : `${destinationLabel} 열기 →`}</a>}</p>
   </nav>;
 }

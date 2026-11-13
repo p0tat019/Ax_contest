@@ -43,12 +43,24 @@ h3 { font-size: 16px; font-weight: 800; }
 .page-header p, section > p, small { color: var(--muted); }
 section { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: clamp(18px, 2.8vw, 32px); margin-bottom: 16px; }
 section[data-view] { display: none; }
-body[data-workspace="dashboard"] [data-view="dashboard"],
 body[data-workspace="intake"] [data-view="intake"],
-body[data-workspace="capacity"] [data-view="capacity"],
 body[data-workspace="review"] [data-view="review"],
+body[data-workspace="intake-result"] [data-view="intake-result"],
+body[data-workspace="history"] [data-view="history"],
+body[data-workspace="production"] [data-view="production"],
+body[data-workspace="capacity"] [data-view="capacity"],
+body[data-workspace="calculation"] [data-view="calculation"],
+body[data-workspace="scenario"] [data-view="scenario"],
+body[data-workspace="department"] [data-view="department"],
+body[data-workspace="checks"] [data-view="checks"],
 body[data-workspace="proposal"] [data-view="proposal"],
-body[data-workspace="assistant"] [data-view="assistant"] { display: block; }
+body[data-workspace="submission"] [data-view="submission"],
+body[data-workspace="reply"] [data-view="reply"],
+body[data-workspace="audit"] [data-view="audit"],
+body[data-workspace="settings"] [data-view="settings"],
+body[data-workspace="inbox"] [data-view="inbox"],
+body[data-workspace="task"] [data-view="task"],
+body[data-workspace="demo"] [data-view="demo"] { display: block; }
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
 .metric { min-width: 0; background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
 .metric span, .metric small { display: block; font-size: 12px; color: var(--muted); }

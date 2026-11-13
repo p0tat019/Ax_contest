@@ -174,18 +174,26 @@ meter::-webkit-meter-optimum-value { background: #338d70; border-radius: 8px; }
 #assistant-panel { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(100%, 460px); height: 100%; max-height: none; max-width: 100%; border: 0; border-left: 1px solid var(--line); padding: 24px; color: var(--ink); background: white; overflow: auto; }
 #assistant-panel::backdrop { background: rgb(22 41 32 / 32%); }
 #work-inbox-open { margin: 0 0 14px; }
-#work-inbox { width: min(610px, calc(100% - 24px)); max-height: 90dvh; padding: 22px; border: 1px solid var(--line); border-radius: 16px; color: var(--ink); background: white; overflow: auto; }
-#work-inbox::backdrop { background: rgb(22 41 32 / 40%); }
 #work-inbox .section-heading h2 { margin: 0; }
-#work-inbox .section-heading form { margin: 0; }
+#work-task { max-width: 760px; }
 #work-inbox-list { display: grid; gap: 8px; padding: 0; list-style: none; }
 #work-inbox-list button { width: 100%; text-align: left; }
 #work-inbox-fields { display: grid; gap: 8px; margin: 10px 0; }
 #work-inbox-fields label { display: block; margin-bottom: 5px; }
 #work-inbox-request { white-space: pre-line; }
-#work-mail-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px,100%),1fr)); gap: 10px; }
-#work-mail-roles fieldset { min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: 8px; }
+#work-mail-roles { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+#work-mail-roles fieldset { position: relative; min-width: 0; margin: 0; padding: 14px 16px; background: white; border: 1px solid var(--line); border-radius: 12px; }
+#work-mail-roles legend { font-weight: 800; color: #23493d; padding: 0 5px; }
 #work-mail-roles label { display: block; }
+#work-mail-roles input:not([type="checkbox"]), #work-mail-key { background: #f3f7f5; }
+#work-mail-roles .mail-role-toggle { display: flex; justify-content: space-between; align-items: center; }
+.mail-role-toggle input { width: auto; margin: 0; accent-color: var(--accent); }
+.mail-role-description { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.mail-role-status { float: right; border-radius: 99px; padding: 2px 8px; background: #f1f5f3; color: var(--muted); font-size: 11px; }
+.mail-role-status[data-registered="true"] { background: #e2f3ea; color: #09553c; }
+#work-mail-panel { background: transparent; border: 0; padding: 0; }
+@media (max-width: 1000px) { #work-mail-roles { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 580px) { #work-mail-roles { grid-template-columns: 1fr; } }
 #work-mail-live-settings { margin: 12px 0; }
 #work-mail-panel { margin-bottom: 16px; scroll-margin-top: 16px; }
 #work-mail-heading { margin-top: 0; }

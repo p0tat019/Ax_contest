@@ -1,8 +1,7 @@
 import { experienceMode } from './workflow-storage.mjs?v=hands-on-demo-1';
-import { assignedPerson, taskForMailLink, updateMailQueue } from './work-mail.mjs?v=dashboard-roles-1';
+import { assignedPerson, taskForMailLink, updateMailQueue } from './work-mail.mjs?v=workflow-pages-1';
 
 const byId = (id) => document.getElementById(id);
-const dialog = byId('work-inbox');
 const list = byId('work-inbox-list');
 const response = byId('work-inbox-response');
 const summary = byId('work-inbox-request');
@@ -20,7 +19,6 @@ function tasks() {
 
 function render() {
   const queue = tasks();
-  byId('work-inbox-open').textContent = `${experienceMode ? '모의 받은편지함' : '업무 받은편지함'} · ${queue.length}`;
   list.replaceChildren(...queue.map((task) => {
     const item = document.createElement('li');
     const button = document.createElement('button');
@@ -46,11 +44,12 @@ function openTask(task) {
   summary.textContent = task.detail;
   opened = task.id;
   if (task.href) {
-    dialog.close();
     if (location.hash === task.href) document.querySelector(task.href)?.scrollIntoView();
     else location.hash = task.href;
     return;
   }
+  byId('work-task-heading').textContent = `${task.owner} · ${task.title}`;
+  if (!/^#work-mail-[a-f0-9]{64}$/.test(location.hash)) location.hash = 'work-task';
   fields.replaceChildren(...task.fields.map(({ name, label, options, multiline, optional, quantity }) => {
     const field = document.createElement('div');
     const wrapper = document.createElement('label');
@@ -73,7 +72,7 @@ function openTask(task) {
     return field;
   }));
   response.hidden = false;
-  fields.querySelector('input, select, textarea')?.focus();
+  requestAnimationFrame(() => byId('work-task-heading').focus({ preventScroll: true }));
 }
 
 export function setInboxTasks(group, entries = []) {
@@ -81,37 +80,25 @@ export function setInboxTasks(group, entries = []) {
   render();
 }
 
-function showInbox() {
+async function openFromMail() {
+  const hash = location.hash;
+  if (!/^#work-mail-[a-f0-9]{64}$/.test(hash)) {
+    if (hash === '#work-task' && !opened) notice.textContent = '업무함에서 처리할 작업을 선택하세요.';
+    return;
+  }
+  const task = await taskForMailLink(hash, tasks()).catch(() => null);
+  if (hash !== location.hash) return;
   opened = null;
   response.hidden = true;
   summary.textContent = '';
-  notice.textContent = '';
-  render();
-  if (!dialog.open) dialog.showModal();
-}
-
-async function openFromMail() {
-  const hash = location.hash;
-  if (!/^#work-mail-[a-f0-9]{64}$/.test(hash)) return;
-  const task = await taskForMailLink(hash, tasks()).catch(() => null);
-  if (hash !== location.hash) return;
-  showInbox();
+  byId('work-task-heading').textContent = '배정된 작업';
   const current = tasks().find(({ id }) => id === task?.id);
   if (current) openTask(current);
   else notice.textContent = '이 브라우저에서 현재 요청을 찾지 못했습니다. 작업이 완료됐거나 다른 브라우저에서 배정됐을 수 있습니다.';
 }
 
 {
-  const button = byId('work-inbox-open');
-  button.hidden = false;
   byId('work-inbox-title').textContent = experienceMode ? '모의 받은편지함' : '업무 받은편지함';
-  button.addEventListener('click', showInbox);
-  byId('work-inbox-mail-settings').addEventListener('click', (event) => {
-    event.preventDefault();
-    dialog.close();
-    location.hash = 'work-mail-panel';
-    requestAnimationFrame(() => byId('work-mail-heading').focus({ preventScroll: true }));
-  });
   document.addEventListener('corevia:work-mail-settings', render);
   document.addEventListener('corevia:intake-ready', openFromMail, { once: true });
   window.addEventListener('hashchange', openFromMail);
@@ -127,7 +114,12 @@ async function openFromMail() {
       summary.textContent = '';
       notice.textContent = message;
       render();
-      (list.querySelector('button') ?? byId('work-inbox-close')).focus();
+      const [type] = task.id.split('/');
+      const next = byId('workflow-next-link');
+      if (type === 'approval' || (type === 'department' && next.hash === '#proposal-workflow')) {
+        location.hash = next.hidden ? 'proposal-workflow' : next.hash;
+      } else if (type === 'department') location.hash = 'work-inbox';
+      else if (type === 'shipping' && !byId('capacity-result').hidden) location.hash = 'capacity-result-page';
     } catch (error) {
       notice.textContent = error.message;
     }

@@ -21,6 +21,11 @@ const errors = new Map();
 const roleOf = (task) => Object.keys(workRoles).find((key) => workRoles[key] === task.owner);
 const typeOf = (task) => task.id.split('/', 1)[0];
 export const assignedPerson = (task) => assignments[roleOf(task)]?.name ?? '';
+const roleBadges = new Map();
+const roleDescriptions = {
+  sales: '입찰 조건·바이어 회신', logistics: '주차별 출고 여력', production: '생산 수량·기존 납품',
+  finance: '증분원가·수금 조건', approver: '입찰 참여 결정',
+};
 
 async function fingerprint(task, address) {
   const data = new TextEncoder().encode(JSON.stringify([scope, task.id, roleOf(task), address]));
@@ -71,7 +76,7 @@ async function sendPending() {
     for (const task of queue) {
       if (version !== generation) break;
       const role = roleOf(task);
-      const email = assignments[role]?.email;
+      const email = assignments[role]?.enabled === false ? '' : assignments[role]?.email;
       if (email && Object.hasOwn(workMailRoutes, `${typeOf(task)}/${role}`)) await dispatch(task, role, email, key, version, settings);
     }
     if (version === generation) {
@@ -97,21 +102,45 @@ for (const [key, label] of Object.entries(workRoles)) {
   const group = document.createElement('fieldset');
   const title = document.createElement('legend');
   title.textContent = label;
-  group.append(title);
+  const description = document.createElement('p');
+  description.className = 'mail-role-description';
+  description.textContent = roleDescriptions[key];
+  const badge = document.createElement('span');
+  badge.className = 'mail-role-status';
+  roleBadges.set(key, badge);
+  group.append(title, badge, description);
   for (const [field, caption, type] of [['name', '담당자 이름', 'text'], ['email', '받을 이메일', 'email']]) {
     const wrapper = document.createElement('label');
     wrapper.textContent = caption;
     const input = document.createElement('input');
     input.type = type;
+    input.placeholder = caption + ' 입력';
     input.name = `${key}-${field}`;
     input.maxLength = field === 'email' ? 254 : 80;
     input.value = assignments[key]?.[field] ?? '';
     wrapper.append(input);
     group.append(wrapper);
   }
+  const toggle = document.createElement('label');
+  toggle.className = 'mail-role-toggle';
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.name = `${key}-enabled`;
+  checkbox.checked = assignments[key]?.enabled ?? Boolean(assignments[key]?.email);
+  toggle.append('이메일 알림', checkbox);
+  group.append(toggle);
   roles.append(group);
 }
 
+function renderAssignments() {
+  for (const [role, badge] of roleBadges) {
+    const assignment = assignments[role];
+    badge.textContent = assignment?.email ? (assignment.enabled === false ? '알림 꺼짐' : '이메일 등록') : '미등록';
+    badge.dataset.registered = String(Boolean(assignment?.email && assignment.enabled !== false));
+  }
+}
+
+renderAssignments();
 byId('work-mail-live-settings').hidden = experienceMode;
 stop.hidden = true;
 if (experienceMode) status.textContent = '체험에서는 지정한 담당자를 표시합니다. 실제 메일은 일반 검토에서 보냅니다.';
@@ -125,13 +154,14 @@ form.addEventListener('submit', (event) => {
   for (const role of Object.keys(workRoles)) {
     const name = values.get(`${role}-name`).trim();
     const email = values.get(`${role}-email`).trim().toLowerCase();
+    const enabled = values.has(`${role}-enabled`);
     if (email && !validWorkEmail(email)) {
       status.textContent = `${workRoles[role]} 담당자 이메일을 확인하세요.`;
       return;
     }
-    if (name || email) updated[role] = { name, email };
+    if (name || email) updated[role] = { name, email, enabled };
   }
-  if (key && (key.length < 24 || !Object.values(updated).some(({ email }) => email))) {
+  if (key && (key.length < 24 || !Object.values(updated).some(({ email, enabled }) => email && enabled))) {
     status.textContent = '자동 발송을 켜려면 발송 키와 받을 이메일을 입력하세요.';
     return;
   }
@@ -141,6 +171,7 @@ form.addEventListener('submit', (event) => {
     return;
   }
   assignments = updated;
+  renderAssignments();
   settingsVersion++;
   if (key) {
     dispatchKey = key;

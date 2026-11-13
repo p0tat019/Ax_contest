@@ -1,6 +1,6 @@
 import { dateKey, proposalIssues } from './proposal-checks.mjs';
 import { renderSupplyDecision } from './supply-decision-view.mjs';
-import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=dashboard-roles-1';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=workflow-pages-1';
 import { changeExperience, experienceMode, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 
 const byId = (id) => document.getElementById(id);
@@ -187,7 +187,7 @@ function render() {
   approvalForm.hidden = Boolean(blocked || approval);
   byId('proposal-document').hidden = Boolean(blocked || approval?.decision !== 'approved');
   byId('proposal-submit').disabled = Boolean(submitted);
-  replyForm.hidden = !submitted || reply?.type === 'change';
+  replyForm.hidden = !submitted || Boolean(reply);
   byId('experience-buyer-change').hidden = !changeExperience;
   byId('proposal-content').textContent = approval?.document ?? '';
   const evidence = byId('approval-evidence-list');
@@ -212,6 +212,9 @@ function render() {
   if (submitted) status = `공급안 ${submitted.version} 모의 제출 완료 · ${submitted.owner} · ${submitted.deadline}까지 회신 확인`;
   if (reply) status = `바이어 접수 확인 · ${reply.owner} · 다음 확인 ${reply.deadline} · ${reply.content}`;
   byId('proposal-status').textContent = status;
+  byId('submission-status').textContent = submitted ? '모의 제출을 기록했습니다.' : approval?.decision === 'approved' && !blocked ? '' : '입찰 참여 승인 후 제출할 수 있습니다.';
+  byId('buyer-reply-status').textContent = submitted ? status : '모의 제출을 완료하면 바이어 회신을 기록할 수 있습니다.';
+  byId('submitted-next').hidden = !submitted;
   renderList('workflow-steps', [
     `입찰 접수 · ${intake ? `검수 버전 ${intake.version} · ${{accepted:'수락', 'needs-information':'보완 요청', rejected:'반려'}[intake.decision] ?? '수락'}` : '대기'}`,
     `공급 가능량 · ${review ? `공급안 버전 ${review.version}` : '계산 대기'}`,
@@ -290,6 +293,8 @@ approvalForm.addEventListener('submit', (event) => {
   try {
     saveApproval({ person: value('approver'), decision: value('approval-decision'),
       reason: value('approval-reason'), conditionalScope: value('conditional-scope') });
+    const next = byId('workflow-next-link');
+    if (!next.hidden) location.hash = next.hash;
   } catch (error) {
     notice.textContent = error.message;
   }
@@ -308,6 +313,7 @@ byId('proposal-submit').addEventListener('click', () => {
   record(`공급안 ${submitted.version} 모의 제출 ${submittedOn} · 영업 · ${submitted.deadline} 회신 확인`);
   persistProposal();
   render();
+  location.hash = 'buyer-reply-form';
 });
 
 byId('experience-buyer-change').addEventListener('click', () => {
@@ -329,9 +335,10 @@ replyForm.addEventListener('submit', (event) => {
   const type = value('reply-type');
   const content = value('reply-content');
   if (!owner || !deadline || !content || !['received', 'change'].includes(type)) {
-    notice.textContent = '회신 담당자, 기한, 유형과 내용을 입력하세요.';
+    byId('buyer-reply-error').textContent = '회신 담당자, 기한, 유형과 내용을 입력하세요.';
     return;
   }
+  byId('buyer-reply-error').textContent = '';
   reply = { owner, deadline, type, content };
   byId('reply-fill-status').hidden = true;
   record(`공급안 ${submitted.version} · 바이어 ${type === 'change' ? '조건 변경 요청' : '접수 확인'} · ${content} · ${owner} · ${deadline}`);

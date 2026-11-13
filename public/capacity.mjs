@@ -3,10 +3,10 @@ import { verifyAllocation } from './capacity-verification.mjs';
 import { renderSupplyDecision } from './supply-decision-view.mjs';
 import { deliverySchedule } from './proposal-checks.mjs';
 import { scenarios } from './capacity-scenarios.mjs';
-import { setReviewPlan } from './department-review.mjs?v=dashboard-roles-1';
-import { recordShippingReply } from './proposal-workflow.mjs?v=dashboard-roles-1';
+import { setReviewPlan } from './department-review.mjs?v=workflow-pages-1';
+import { recordShippingReply } from './proposal-workflow.mjs?v=workflow-pages-1';
 import { changeExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
-import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=dashboard-roles-1';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=workflow-pages-1';
 
 const byId = (id) => document.getElementById(id);
 const form = byId('capacity-form');
@@ -159,6 +159,7 @@ function updateEvidenceFields() {
 
 function invalidateCalculation(edited = false) {
   result.hidden = true;
+  byId('capacity-result-empty').hidden = false;
   setReviewPlan(null, undefined, edited);
 }
 
@@ -443,11 +444,13 @@ form.addEventListener('submit', (event) => {
     });
     status.textContent = '';
     result.hidden = false;
+    byId('capacity-result-empty').hidden = true;
     saveCapacity(true);
     const version = setReviewPlan({ intakeVersion: intake.version, customer: intake.conditions.customer, plans,
       ...(requiresFinanceEvidence ? { requiresFinanceEvidence } : {}),
     }, focusRow);
     byId('capacity-audit-meta').textContent = `공급안 버전 ${version} · 접수 검수 ${intake.version} · 이번 계산 ${new Date().toLocaleString('ko-KR')} · 자료 기준일 ${intake.evidence?.asOf ?? '미기록'}`;
+    if (event.submitter) location.hash = 'capacity-result-page';
   } catch (error) {
     status.textContent = error.message;
   }

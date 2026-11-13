@@ -1,81 +1,11 @@
 import React, { useState } from 'react';
 import evidence from '../public/intake-data.json';
 import { compareCapacity, expansionAvailable, readQuantity } from '../public/capacity-plan.mjs';
-import { deliverySchedule } from '../public/proposal-checks.mjs';
-import { weeks, bids, assessBid, freeSupply } from './supply-overview-data.mjs';
+import { weeks, bids, freeSupply } from './supply-overview-data.mjs';
 
 const number = new Intl.NumberFormat('ko-KR');
 const ea = (value) => `${number.format(value)} EA`;
 const total = (rows, field) => rows.reduce((sum, row) => sum + field(row), 0);
-
-export function DecisionOverview({ record, plans, next, href, approved, decision }) {
-  const [weekIndex, setWeek] = useState(0);
-  const week = weeks[weekIndex];
-  const customer = record?.conditions?.customer ?? 'C-201';
-  const previewBid = bids.find(({ id }) => id === customer);
-  const preview = previewBid ? assessBid(previewBid, week, bids) : null;
-  const volume = plans.length ? ea(total(plans, (row) => row.revised.proposal)) : '미산정';
-  let schedule = [];
-  try {
-    if (record?.conditions?.deliveryEvidence) schedule = deliverySchedule(record.conditions.deliverySchedule);
-  } catch {
-    // Invalid or incomplete schedules stay unverified in the decision view.
-  }
-  const existingShort = total(plans, (row) => row.revised.existingShortage);
-  const issueCount = document.getElementById('proposal-issues').children.length;
-  const unallocated = total(plans, (row) => row.unmetRequest);
-  return <div className="decision-overview">
-    <div className="decision-intro">
-      <div>
-        <p className="eyebrow">{record ? '현재 검토 건' : '대표 검토 건'}</p>
-        <h1>{customer} 입찰 검토</h1>
-        <p>기존 고객의 납품 약속을 보호하며 제안 가능한 조건을 판단합니다.</p>
-      </div>
-      <span className={`decision-pill ${approved ? 'is-approved' : ''}`}>{approved ? '참여 승인' : decision === 'declined' ? '참여 보류' : decision === 'returned' ? '보완 요청' : record ? '검토 중' : '자료 확인 필요'}</span>
-    </div>
-    <div className="decision-metrics">
-      {[
-        ['납품표 요청량', schedule.length ? ea(total(schedule, (row) => row.quantity)) : '미확인', '바이어 회신 근거를 기록한 납품표'],
-        [approved ? '승인된 제안량' : '계산된 제안량', volume, approved ? '입찰 참여 조건 · 모의 제출' : '최종 승인 전 제안 후보'],
-        ['기존 납품 부족', plans.length ? ea(existingShort) : '검증 필요', '계산에 입력한 확정 약속 기준'],
-        ['증설 판단', '미판정', '라인·투자비·수익성 근거 필요'],
-      ].map(([label, value, note]) => <div key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></div>)}
-    </div>
-    <div className="decision-body">
-      <div className="analysis-panel">
-        <div className="section-heading"><h2>{plans.length ? '공급 가능성' : '공급 여력 미리보기'}</h2>
-          <span className="source-label">{plans.length ? '현재 공급안 · 계산 결과' : preview ? `${customer} · 시연 가정` : '자료 확인 필요'}</span>
-        </div>
-        {plans.length ? <>
-          <p>{unallocated ? `요청 대비 ${ea(unallocated)}를 배정하지 못했습니다.` : '계산 대상 요청량을 모두 배정했습니다.'}
-            {issueCount > 0 && ` 승인 전 확인 사항 ${issueCount}건.`}</p>
-          <PlanTimeline plans={plans} />
-        </> : preview ? <>
-          <label className="compact-label">검토 주간<select value={weekIndex} onChange={(event) => setWeek(Number(event.target.value))}>
-            {weeks.map((item, index) => <option value={index} key={item.start}>{item.label}</option>)}
-          </select></label>
-          <CompareBar label={previewBid.route} requested={preview.requested} available={preview.shipping} />
-          <p className="supply-note">가정 물량 기준 {ea(Math.max(0, preview.shippingShortage))}의 출고 여력이 더 필요합니다. 확정 납품표를 확인하면 다시 계산할 수 있습니다.</p>
-        </> : <p>이 입찰의 주간 요청량과 출고 여력을 등록하면 공급안에서 확인할 수 있습니다.</p>}
-      </div>
-      <div className="decision-next">
-        <span className="eyebrow">다음 결정</span><h2>{approved ? '승인 조건과 후속 업무' : '검토를 진행하려면'}</h2>
-        <p>{next || '영업 담당자가 입찰 요청과 확정 납품 조건을 확인하세요.'}</p>
-        {record && <a className="primary-link" href={href || '#intake-request'}>{href === '#capacity-entry' ? '공급안 계산 열기' : href === '#department-review' ? '부서 검수 열기' : '필요한 작업 열기'} <span aria-hidden="true">→</span></a>}
-        <a className="text-link" href="#scenario-heading">가정으로 시나리오 비교</a>
-      </div>
-    </div>
-  </div>;
-}
-
-function CompareBar({ label, requested, available }) {
-  const max = Math.max(requested, available, 1);
-  return <div className="comparison-bar">
-    <strong>{label}</strong>
-    <div><span>요청</span><meter min="0" max={max} value={requested} /><b>{ea(requested)}</b></div>
-    <div><span>가용</span><meter min="0" max={max} value={Math.max(0, available)} /><b>{ea(available)}</b></div>
-  </div>;
-}
 
 function PlanTimeline({ plans }) {
   return <div className="plan-timeline">

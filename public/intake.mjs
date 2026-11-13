@@ -1,7 +1,7 @@
 import { example, extractConditions, fields, pendingTasks } from './intake-rules.mjs';
 import { lookupEvidence } from './intake-lookup.mjs';
-import { setCapacityIntake } from './capacity.mjs?v=dashboard-roles-1';
-import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=dashboard-roles-1';
+import { setCapacityIntake } from './capacity.mjs?v=workflow-pages-1';
+import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=workflow-pages-1';
 import { experienceMode, handsOnExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 import { deliverySchedule } from './proposal-checks.mjs';
 
@@ -174,6 +174,7 @@ function showDraft(conditions) {
   reason.value = '';
   saveNotice.textContent = '';
   review.hidden = false;
+  byId('review-empty').hidden = true;
   void runLookup();
 }
 
@@ -359,6 +360,7 @@ request.addEventListener('input', () => {
     byId('intake-screening').hidden = true;
   }
   review.hidden = true;
+  byId('review-empty').hidden = false;
   ++lookupVersion;
   decision.value = '';
   notice.textContent = '';
@@ -385,8 +387,12 @@ byId('example').addEventListener('click', () => {
   byId('intake-screening').hidden = true;
   request.value = example;
   extractDraft();
+  if (!review.hidden) location.hash = 'review';
 });
-byId('extract').addEventListener('click', extractDraft);
+byId('extract').addEventListener('click', () => {
+  extractDraft();
+  if (!review.hidden) location.hash = 'review';
+});
 document.addEventListener('corevia:open-bid', ({ detail: { source, summary, context, sample, rawOnly } }) => {
   supplyContext = context;
   byId('intake-screening-summary').textContent = summary;
@@ -411,6 +417,7 @@ document.addEventListener('corevia:open-bid', ({ detail: { source, summary, cont
       deliverySchedule: '2026-08-02 PL-01 10000; 2026-08-02 PL-02 6000',
       deliveryEvidence: '체험용 바이어 회신 SIM-BUYER-001', splitDelivery: '일괄 납품' });
     byId('reviewer').value = '체험 영업 담당자';
+    location.hash = 'review';
   } else extractDraft();
 });
 byId('review-form').addEventListener('input', (event) => {
@@ -505,6 +512,7 @@ byId('review-form').addEventListener('submit', (event) => {
   reason.value = '';
   showResult(record);
   saveNotice.textContent = '검수한 공급 조건과 확인 작업을 이 브라우저에 저장했습니다.';
+  location.hash = record.decision === 'accepted' ? 'capacity-entry' : 'result';
 });
 
 byId('review-form').dataset.ready = 'true';

@@ -1,4 +1,4 @@
-import { drafts, modules } from './assistant-skills.mjs';
+import { drafts, modules } from './assistant-skills.mjs?v=workflow-pages-1';
 import { requestAssistant } from './ai-client.mjs';
 import { loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 
@@ -130,7 +130,6 @@ actionButton.addEventListener('click', () => {
     target.value = pending.value;
     target.dispatchEvent(new Event('input', { bubbles: true }));
     window.location.hash = modules[pending.module].anchor;
-    if (pending.module === 'capacity') byId('capacity-entry').open = true;
     byId('assistant-panel').close();
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => target.focus()));
     answer.textContent = '입력란에 초안을 넣었습니다. 값을 확인한 뒤 해당 화면에서 다음 단계를 진행하세요.';

@@ -1,8 +1,8 @@
 import { requestFeedback } from './ai-client.mjs';
 import { supplyChecks } from './capacity-plan.mjs?v=followup-demo-1';
-import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=dashboard-roles-1';
+import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=workflow-pages-1';
 import { loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
-import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=dashboard-roles-1';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=workflow-pages-1';
 
 const byId = (id) => document.getElementById(id);
 const section = byId('department-review-content');
@@ -25,6 +25,7 @@ function persistReview() {
 function renderSupplyChecks() {
   const plan = active;
   byId('supply-checks').hidden = !plan.checks.length;
+  byId('supply-check-empty').hidden = Boolean(plan.checks.length);
   const items = plan.checks.map((check, index) => {
     const item = document.createElement('article');
     const heading = document.createElement('h4');
@@ -89,6 +90,8 @@ export function setReviewPlan(plan, onEditRow, edited = false) {
   byId('department-notice').textContent = '';
   if (!plan) {
     active = null;
+    byId('supply-checks').hidden = true;
+    byId('supply-check-empty').hidden = false;
     setInboxTasks('departments');
     if (edited && latest?.signature) {
       latest.signature = null;
@@ -239,6 +242,7 @@ form.addEventListener('submit', (event) => {
     notice.textContent = saveDepartmentDecision({ role: value('role'), person: value('person'), decision: value('decision'),
       feedback: value('feedback'), closureEvidence: value('closure-evidence'),
       cost: value('finance-cost'), cash: value('finance-cash') });
+    if (byId('workflow-next-link').hash === '#proposal-workflow') location.hash = 'proposal-workflow';
   } catch (error) {
     notice.textContent = error.message;
   }

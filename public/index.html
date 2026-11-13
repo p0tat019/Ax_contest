@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
     <link rel="stylesheet" href="./intake.css?v=workflow-pages-1">
-    <link rel="stylesheet" href="./workspace.css?v=fixed-actions-1">
-    <script type="module" src="./workspace.js?v=fixed-actions-1"></script>
+    <link rel="stylesheet" href="./workspace.css?v=sales-example-entry-1">
+    <script type="module" src="./workspace.js?v=sales-example-entry-1"></script>
     <script type="module" src="./intake.mjs?v=complete-sales-example-1"></script>
     <script type="module" src="./assistant.mjs?v=workflow-checks-1"></script>
     <script type="module" src="./trial-fill.mjs?v=complete-sales-example-1"></script>
@@ -130,6 +130,11 @@
         <div id="review" hidden>
         <p class="review-instruction"><strong>검수 기준</strong> 품목·수량·초도일을 원문과 회신에 대조하세요. 미확인 조건은 확인 작업으로 남기고, 검수 수락 이후에도 납품표와 계산 결과가 일치해야 승인할 수 있습니다.</p>
         <h2>영업 담당자 검수</h2>
+        <div id="sales-example-entry" class="review-instruction" hidden>
+          <p>영업 검수 예시는 체험 탭에서 채울 수 있습니다. 지금 검토 중인 입찰은 이 탭에 보관됩니다.</p>
+          <a href="?experience=1&amp;case=hands-on&amp;start=review#intake-request" target="_blank" rel="noopener"
+            data-workflow-action="example">영업 검수 예시 열기 (새 탭)</a>
+        </div>
         <div class="review-instruction">
           <strong>지금 할 일</strong>
           <p id="review-action-summary"></p>

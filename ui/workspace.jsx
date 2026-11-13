@@ -111,14 +111,23 @@ function Workspace() {
     } }));
   };
   useEffect(() => {
-    if (!experienceMode || !['normal', 'change'].includes(new URLSearchParams(location.search).get('case'))
+    const params = new URLSearchParams(location.search);
+    const startsWithReview = handsOnExperience && params.get('start') === 'review';
+    if (!experienceMode || (!startsWithReview && !['normal', 'change'].includes(params.get('case')))
       || hash() !== 'intake-request' || loadState('intake')) return;
+    if (startsWithReview) {
+      params.delete('start');
+      history.replaceState(null, '', `?${params}#intake-request`);
+    }
     if (byId('review-form').dataset.ready) sample();
     else {
       const loadSample = () => sample();
       document.addEventListener('corevia:intake-ready', loadSample, { once: true });
       return () => document.removeEventListener('corevia:intake-ready', loadSample);
     }
+  }, []);
+  useEffect(() => {
+    byId('sales-example-entry').hidden = experienceMode;
   }, []);
   return <>
     {portal('workspace-nav', <>

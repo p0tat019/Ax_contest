@@ -93,6 +93,18 @@ async function verifyWorkflow(page, base) {
   await page.goto(base);
   await view('intake');
   assert.equal(await page.locator('[data-trial-fill]:visible').count(), 0);
+  await action(field('example'));
+  await view('review');
+  const originalProof = page.locator('#review-form').getByLabel('납품표 확인 근거', { exact: true });
+  assert.equal(await originalProof.inputValue(), '');
+  const popup = page.waitForEvent('popup');
+  await action(field('sales-example-entry').locator('a'));
+  const sampleTab = await popup;
+  await sampleTab.locator('#workflow-actions').getByRole('button', { name: '영업 검수 예시 채우기' }).click();
+  assert.match(await sampleTab.locator('#review-form').getByLabel('납품표 확인 근거', { exact: true }).inputValue(), /SIM-BUYER-001/);
+  assert.equal(await originalProof.inputValue(), '');
+  await sampleTab.close();
+  await open('intake-request', 'intake');
   await page.getByRole('link', { name: '모의 입찰', exact: true }).click();
   await view('demo');
   assert.match(await field('dashboard-trial-start').innerText(), /예시 입찰 접수부터 직접 진행/);

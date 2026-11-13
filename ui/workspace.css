@@ -208,6 +208,37 @@ meter::-webkit-meter-optimum-value { background: #338d70; border-radius: 8px; }
 .trial-paths article > :last-child { margin-top: auto; }
 .trial-fill { margin-bottom: 10px; border-color: #bfd9cc; background: #edf6f1; }
 .trial-fill-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.workflow-actions-ready [data-workflow-action] { display: none; }
+main[data-fixed-actions] { padding-bottom: calc(32px + var(--workflow-action-height, 75px)); }
+html { scroll-padding-bottom: calc(16px + var(--workflow-action-height, 75px)); }
+#workflow-actions {
+  position: fixed;
+  z-index: 12;
+  inset: auto 0 0 var(--rail);
+  padding: 10px clamp(12px, 3vw, 40px) calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: white;
+  box-shadow: 0 -5px 24px rgb(25 37 34 / 8%);
+}
+.workflow-action-inner, #workflow-action-buttons { display: flex; align-items: stretch; gap: 8px; }
+.workflow-action-inner { justify-content: flex-end; max-width: 1510px; }
+#workflow-action-buttons { min-width: 0; }
+#workflow-actions button, #workflow-action-menu > summary { min-height: 44px; font-size: 14px; line-height: 1.35; }
+#workflow-action-menu { position: relative; margin: 0; border: 0; padding: 0; background: transparent; }
+#workflow-action-menu > summary { display: flex; align-items: center; justify-content: center; padding: 6px 10px; margin: 0; border: 1px solid var(--line); border-radius: 8px; white-space: nowrap; }
+#workflow-action-menu > summary::marker { content: ''; }
+#workflow-action-extra { position: absolute; inset: auto 0 calc(100% + 10px) auto; display: grid; gap: 6px; width: min(290px, calc(100vw - 24px)); max-height: 45vh; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: white; box-shadow: 0 5px 20px rgb(25 37 34 / 14%); }
+#workflow-action-menu:not([open]) #workflow-action-extra { display: none; }
+#workflow-action-extra button { text-align: left; }
+@media (max-width: 860px) {
+  #workflow-actions { left: 0; }
+}
+@media (max-width: 580px) {
+  .workflow-action-inner { justify-content: flex-start; }
+  #workflow-action-extra { left: 0; right: auto; }
+  #workflow-action-buttons { flex: 1; }
+  #workflow-action-buttons button { flex: 1; padding: 6px 8px; overflow-wrap: anywhere; }
+}
 #assistant-panel #assistant-grounding { padding: 12px; background: var(--soft); font-size: 14px; }
 
 @media (max-width: 860px) {

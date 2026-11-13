@@ -38,8 +38,21 @@ async function verifyWorkflow(page, base) {
     return route.fulfill({ json: { accepted: true } });
   });
   const field = (id) => page.locator('#' + id);
-  const submit = (id) => page.locator('#' + id + ' button[type=submit]').click();
-  const fillExample = (name) => page.locator('[data-trial-fill="' + name + '"]').click();
+  async function action(source) {
+    const label = (await source.getAttribute('data-workflow-label')) ?? (await source.textContent()).trim();
+    const dock = field('workflow-actions');
+    let button = dock.getByRole('button', { name: label, exact: true });
+    if (!await button.isVisible()) {
+      await page.locator('#workflow-action-menu > summary').click();
+      button = dock.getByRole('button', { name: label, exact: true });
+    }
+    const bounds = await dock.boundingBox();
+    assert.ok(bounds && Math.abs(bounds.y + bounds.height - page.viewportSize().height) <= 2,
+      '작업 버튼 영역은 화면 하단에 있어야 합니다.');
+    await button.click();
+  }
+  const submit = (id) => action(page.locator('#' + id + ' button[type=submit]'));
+  const fillExample = (name) => action(page.locator('[data-trial-fill="' + name + '"]'));
   const stored = (key) => page.evaluate((name) =>
     JSON.parse(sessionStorage.getItem('corevia.experience.hands-on.' + name + '.v1')), key);
   async function view(name) {
@@ -84,16 +97,17 @@ async function verifyWorkflow(page, base) {
   await view('demo');
   assert.match(await field('dashboard-trial-start').innerText(), /예시 입찰 접수부터 직접 진행/);
   assert.match(await field('dashboard-followup-start').innerText(), /출고 변경과 재검수 과정 보기/);
-  const entry = await field('dashboard-trial-start').boundingBox();
+  const entry = await field('workflow-actions').getByRole('button', { name: /예시 입찰 접수부터 직접 진행/ }).boundingBox();
   assert.ok(entry && entry.x >= 0 && entry.x + entry.width <= page.viewportSize().width);
-  await field('dashboard-followup-start').click();
+  await action(field('dashboard-followup-start'));
   await page.locator('.trial-player[open]').waitFor();
   await page.getByRole('button', { name: '시연 닫기' }).click();
-  await field('dashboard-trial-start').click();
+  await action(field('dashboard-trial-start'));
   await view('intake');
-  await page.getByRole('button', { name: '체험용 입찰서 채우기' }).click();
-  await field('extract').click();
+  await action(page.locator('#hands-on-intake button'));
+  await action(field('extract'));
   await view('review');
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await fillExample('sales');
   await submit('review-form');
   await view('capacity');
@@ -128,13 +142,13 @@ async function verifyWorkflow(page, base) {
   assert.equal(await field('work-inbox-field-person').inputValue(), '체험 승인자');
   await submit('work-inbox-response');
   await view('submission');
-  await field('proposal-submit').click();
+  await action(field('proposal-submit'));
   await view('reply');
   await page.reload();
   await view('reply');
   assert.equal(await field('buyer-reply-form').isVisible(), true);
 
-  await field('experience-buyer-change').click();
+  await action(field('experience-buyer-change'));
   await submit('buyer-reply-form');
   await view('review');
   assert.ok(page.url().endsWith('#buyer-change-edit'));
@@ -172,7 +186,7 @@ async function verifyWorkflow(page, base) {
   await view('submission');
   assert.match(await field('proposal-content').innerText(), /1,500 EA/);
   assert.match(await field('proposal-content').innerText(), /500 EA/);
-  await field('proposal-submit').click();
+  await action(field('proposal-submit'));
   await view('reply');
   await fillExample('reply');
   await submit('buyer-reply-form');
@@ -182,16 +196,16 @@ async function verifyWorkflow(page, base) {
   await open('trial-heading', 'scenario');
   const seed = page.getByLabel('재현 번호');
   await seed.fill('4294967296');
-  const replay = page.getByRole('button', { name: '같은 입력 재현' });
-  await replay.click();
+  const replay = page.locator('#trial-heading button[type=submit][data-workflow-action]');
+  await action(replay);
   await page.getByRole('alert').filter({ hasText: '4294967295' }).waitFor();
   await seed.fill('42');
-  await replay.click();
+  await action(replay);
   await page.getByRole('button', { name: '결과 바로 보기' }).click();
   const result = page.locator('.trial-results tbody');
   const first = await result.innerText();
   assert.match(await page.locator('.trial-results').innerText(), /원본 재현 번호 42/);
-  await replay.click();
+  await action(replay);
   await page.getByRole('button', { name: '결과 바로 보기' }).click();
   assert.equal(await result.innerText(), first);
 

@@ -242,11 +242,11 @@ export function BidTrial() {
     <div className="section-heading"><h2>랜덤 입찰 검증</h2><span className="decision-pill">모의 입력 · 읽기 전용 검증</span></div>
     <p>모의 입찰서에서 조건을 추출하고 실제 공급계획 계산과 납품표 검증을 실행합니다. 승인·제출 기록에는 반영되지 않습니다.</p>
     <div className="trial-actions">
-      <button type="button" onClick={randomize}>새 랜덤 입찰 실행</button>
-      <button type="button" className="secondary" onClick={() => calculate(input, false)}>현재 입력으로 공급량 계산</button>
+      <button type="button" data-workflow-action="example" onClick={randomize}>새 랜덤 입찰 실행</button>
+      <button type="button" data-workflow-action="primary" onClick={() => calculate(input, false)}>현재 입력으로 공급량 계산</button>
       <form onSubmit={(event) => { event.preventDefault(); replay(seed); }}>
         <label>재현 번호<input value={seed} onChange={(event) => setSeed(event.target.value)} inputMode="numeric" maxLength={10} /></label>
-        <button className="secondary" type="submit">같은 입력 재현</button>
+        <button className="secondary" type="submit" data-workflow-action="extra">같은 입력 재현</button>
       </form>
     </div>
     <form onSubmit={(event) => { event.preventDefault(); calculate(input, false); }}>
@@ -258,7 +258,6 @@ export function BidTrial() {
           <option value="">기본값 · 납품일</option>
           <option value="2026-08-02">2026-08-02 · 납품일</option><option value="2026-08-03">2026-08-03 · 납품 이후</option>
         </select></label></div>
-        <button type="submit">수정한 조건 다시 계산</button>
         <p className="supply-note">빈 칸만 기본값으로 계산합니다. 입력한 0은 그대로 사용합니다. 재현 번호는 처음 생성된 입력을 복원합니다.</p>
       </details>
     </form>

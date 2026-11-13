@@ -53,11 +53,15 @@ function renderSupplyChecks() {
     const button = document.createElement('button');
     button.type = 'submit';
     button.textContent = '확인 완료 기록';
+    button.dataset.workflowAction = 'extra';
+    button.dataset.workflowLabel = `${check.product} · ${check.owner} 확인 완료 기록`;
     if (experienceMode) {
       const example = document.createElement('button');
       example.type = 'button';
       example.className = 'secondary trial-fill';
       example.textContent = '공급 제약 확인 예시 채우기';
+      example.dataset.workflowAction = 'extra';
+      example.dataset.workflowLabel = `${check.product} · ${check.owner} 확인 예시 채우기`;
       example.addEventListener('click', () => {
         inputs[0].value = '체험 ' + check.owner + ' 담당자';
         inputs[1].value = 'SIM-CHECK-001 · ' + check.task + ' 결과를 모의 자료와 대조';

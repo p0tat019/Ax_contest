@@ -147,7 +147,7 @@ function Workspace() {
       <a href="?#intake-request">일반 검토로 돌아가기</a>
     </div> : null)}
     {portal('hands-on-intake', handsOnExperience ? <div className="hands-on-input">
-      <button type="button" className="secondary" disabled={!intakeReady} onClick={() => sample(true)}>체험용 입찰서 채우기</button>
+      <button type="button" className="secondary" data-workflow-action="example" disabled={!intakeReady} onClick={() => sample(true)}>체험용 입찰서 채우기</button>
       <small role="status">{intakeReady ? '채운 값은 수정할 수 있습니다. 조건 추출을 눌러 처리하세요.'
         : intakeStatus === 'delayed' ? '입력 화면 연결이 지연되고 있습니다. 계속 지연되면 이 페이지를 새로고침하세요.' : '입력 화면을 준비하고 있습니다.'}</small>
     </div> : null)}
@@ -189,7 +189,7 @@ function WorkflowMap({ workflow, view }) {
     </li>)}</ol>
     <p>{view === 'scenario' ? '테스트 화면 · 승인 기록과 분리' : next}
       {view === 'scenario' ? <a href="#intake-request">입찰 접수로 돌아가기 →</a>
-        : showLink && <a href={href}>{returnRequired ? `${destinationLabel} 단계로 돌아가기 ↶` : `${destinationLabel} 열기 →`}</a>}</p>
+        : showLink && view !== 'reply' && <a href={href} data-workflow-action="fallback">{returnRequired ? `${destinationLabel} 단계로 돌아가기 ↶` : `${destinationLabel} 열기 →`}</a>}</p>
   </nav>;
 }
 

@@ -8,6 +8,7 @@ import { BidTrial } from './bid-trial-view.jsx';
 import './workspace.css';
 
 const pages = {
+  home: 'Corevia 약속계획',
   settings: '담당자·메일 등록', inbox: '업무함', task: '배정된 작업', demo: '모의 입찰',
   intake: '입찰 접수', review: '영업 검수', 'intake-result': '영업 검수 결과', history: '고객 자료',
   production: '생산 근거', capacity: '공급안 계산', calculation: '공급안 계산 결과',
@@ -25,6 +26,7 @@ const byId = (id) => document.getElementById(id);
 const hash = () => window.location.hash.slice(1);
 const viewForHash = () => {
   const anchor = hash();
+  if (!anchor) return experienceMode ? 'intake' : 'home';
   if (/^work-mail-[a-f0-9]{64}$/.test(anchor)) return 'task';
   return byId(anchor)?.closest('section[data-view]')?.dataset.view ?? (Object.hasOwn(aliases, anchor) ? aliases[anchor] : 'intake');
 };
@@ -131,7 +133,7 @@ function Workspace() {
   }, []);
   return <>
     {portal('workspace-nav', <>
-      <a className="workspace-brand" href="#intake-request"><span className="brand-mark" aria-hidden="true">C</span><span><strong>Corevia</strong><small>약속계획</small></span></a>
+      <a className="workspace-brand" href="?#welcome"><span className="brand-mark" aria-hidden="true">C</span><span><strong>Corevia</strong><small>약속계획</small></span></a>
       <nav aria-label="주 메뉴">
         {nav.map(([key, label, anchor]) => <a key={key} href={`#${anchor}`} aria-current={view === key ? 'page' : undefined}>
           {label}</a>)}
@@ -144,7 +146,7 @@ function Workspace() {
         <button type="button" className="secondary" onClick={() => openAssistant(title)}>✦ 업무 어시스턴트</button>
       </div>
     </div>)}
-    {portal('workflow-map', ['settings', 'task', 'inbox', 'audit', 'demo'].includes(view) ? null : <WorkflowMap workflow={workflow} view={view} />)}
+    {portal('workflow-map', ['home', 'settings', 'task', 'inbox', 'audit', 'demo'].includes(view) ? null : <WorkflowMap workflow={workflow} view={view} />)}
     {portal('experience-guide', experienceMode ? <div className="guide-strip">
       <div><strong>{handsOnExperience ? '직접 입력 테스트' : changeExperience ? '조건 변경·재검수 체험' : '정상 제출 체험'}</strong><p>{handsOnExperience && view === 'intake' && !workflow.record
         ? '입찰서를 직접 입력하거나 예시를 채우세요. 조건 추출을 누르면 방금 입력한 내용에서 검수 초안을 만듭니다.'

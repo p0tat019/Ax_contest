@@ -208,7 +208,7 @@ export function BidTrial() {
   function randomize() { replay(String(crypto.getRandomValues(new Uint32Array(1))[0])); }
 
   useEffect(() => {
-    const followupButton = document.getElementById('dashboard-followup-start');
+    const followupButtons = ['dashboard-followup-start', 'welcome-followup-start'].map((id) => document.getElementById(id));
     function startFollowup() {
       setSeed('');
       setRunSeed(null);
@@ -216,11 +216,15 @@ export function BidTrial() {
       setInput(initial);
       calculate(initial, false, firstFollowup);
     }
-    followupButton.disabled = false;
-    followupButton.addEventListener('click', startFollowup);
+    for (const button of followupButtons) {
+      button.disabled = false;
+      button.addEventListener('click', startFollowup);
+    }
     return () => {
-      followupButton.removeEventListener('click', startFollowup);
-      followupButton.disabled = true;
+      for (const button of followupButtons) {
+        button.removeEventListener('click', startFollowup);
+        button.disabled = true;
+      }
     };
   }, []);
 

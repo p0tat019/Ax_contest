@@ -91,6 +91,15 @@ async function verifyWorkflow(page, base) {
   }
 
   await page.goto(base);
+  await view('home');
+  const welcome = field('welcome');
+  await welcome.getByRole('button', { name: '출고 변경과 재검수 과정 보기' }).click();
+  await page.locator('.trial-player[open]').waitFor();
+  await page.getByRole('button', { name: '시연 닫기' }).click();
+  await welcome.getByRole('link', { name: '모의 입찰로 가기' }).click();
+  await view('demo');
+  await open('welcome', 'home');
+  await welcome.getByRole('link', { name: '실제 서비스로 가기' }).click();
   await view('intake');
   assert.equal(await page.locator('[data-trial-fill]:visible').count(), 0);
   await action(field('example'));

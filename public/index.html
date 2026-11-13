@@ -4,19 +4,44 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
-    <link rel="stylesheet" href="./intake.css?v=workflow-pages-1">
-    <link rel="stylesheet" href="./workspace.css?v=sales-example-entry-1">
-    <script type="module" src="./workspace.js?v=sales-example-entry-1"></script>
+    <link rel="stylesheet" href="./intake.css?v=welcome-1">
+    <link rel="stylesheet" href="./workspace.css?v=welcome-1">
+    <script type="module" src="./workspace.js?v=welcome-1"></script>
     <script type="module" src="./intake.mjs?v=complete-sales-example-1"></script>
     <script type="module" src="./assistant.mjs?v=workflow-checks-1"></script>
     <script type="module" src="./trial-fill.mjs?v=complete-sales-example-1"></script>
     <script type="module" src="./workflow-actions.mjs?v=fixed-actions-1"></script>
   </head>
-  <body data-workspace="intake">
+  <body data-workspace="home">
     <div id="workspace-root"></div>
     <aside id="workspace-nav" aria-label="업무 메뉴"></aside>
     <main>
       <header id="workspace-header"></header>
+      <section id="welcome" data-view="home" aria-labelledby="welcome-title">
+        <header class="welcome-brand">
+          <span class="brand-mark" aria-hidden="true">C</span>
+          <strong>Corevia 약속계획</strong>
+        </header>
+        <div class="welcome-intro">
+          <h1 id="welcome-title">기존 납품을 지키면서<br>새 입찰의 공급량을 결정하세요</h1>
+          <p>납품 약속과 생산·출고 여력을 확인하고, 부서 검수부터 참여 승인과 바이어 회신까지 이어서 처리합니다.</p>
+          <div class="welcome-actions">
+            <a class="primary-link" href="#trial-launch">모의 입찰로 가기 <span aria-hidden="true">→</span></a>
+            <a class="welcome-service" href="#intake-request">실제 서비스로 가기 <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
+        <article class="welcome-demo" aria-labelledby="welcome-demo-title">
+          <div>
+            <h2 id="welcome-demo-title">모의 입찰 시연</h2>
+            <p>기존 납품을 지키면서 16,000개를 제안했습니다. 출고 예약이 늘자 제안량을 다시 계산하고, 새 근거로 재검수를 요청합니다.</p>
+            <button id="welcome-followup-start" class="secondary" type="button" aria-haspopup="dialog" disabled>출고 변경과 재검수 과정 보기</button>
+          </div>
+          <dl class="welcome-figures">
+            <div><dt>초기 제안량</dt><dd>16,000 <small>EA</small></dd></div>
+            <div><dt>출고 변경 후</dt><dd>2,000 <small>EA</small></dd></div>
+          </dl>
+        </article>
+      </section>
       <section id="work-inbox" data-view="inbox" aria-labelledby="work-inbox-title">
         <div class="section-heading"><h2 id="work-inbox-title">모의 받은편지함</h2>
           </div>

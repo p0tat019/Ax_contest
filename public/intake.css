@@ -43,6 +43,7 @@ h3 { font-size: 16px; font-weight: 800; }
 .page-header p, section > p, small { color: var(--muted); }
 section { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: clamp(18px, 2.8vw, 32px); margin-bottom: 16px; }
 section[data-view] { display: none; }
+body[data-workspace="home"] [data-view="home"],
 body[data-workspace="intake"] [data-view="intake"],
 body[data-workspace="review"] [data-view="review"],
 body[data-workspace="intake-result"] [data-view="intake-result"],

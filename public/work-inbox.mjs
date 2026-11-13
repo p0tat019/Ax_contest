@@ -1,5 +1,5 @@
 import { experienceMode } from './workflow-storage.mjs?v=hands-on-demo-1';
-import { assignedPerson, taskForMailLink, updateMailQueue } from './work-mail.mjs';
+import { assignedPerson, taskForMailLink, updateMailQueue } from './work-mail.mjs?v=dashboard-roles-1';
 
 const byId = (id) => document.getElementById(id);
 const dialog = byId('work-inbox');
@@ -92,7 +92,7 @@ function showInbox() {
 
 async function openFromMail() {
   const hash = location.hash;
-  if (!hash.startsWith('#work-mail-')) return;
+  if (!/^#work-mail-[a-f0-9]{64}$/.test(hash)) return;
   const task = await taskForMailLink(hash, tasks()).catch(() => null);
   if (hash !== location.hash) return;
   showInbox();
@@ -106,6 +106,12 @@ async function openFromMail() {
   button.hidden = false;
   byId('work-inbox-title').textContent = experienceMode ? '모의 받은편지함' : '업무 받은편지함';
   button.addEventListener('click', showInbox);
+  byId('work-inbox-mail-settings').addEventListener('click', (event) => {
+    event.preventDefault();
+    dialog.close();
+    location.hash = 'work-mail-panel';
+    requestAnimationFrame(() => byId('work-mail-heading').focus({ preventScroll: true }));
+  });
   document.addEventListener('corevia:work-mail-settings', render);
   document.addEventListener('corevia:intake-ready', openFromMail, { once: true });
   window.addEventListener('hashchange', openFromMail);

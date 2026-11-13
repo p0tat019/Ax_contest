@@ -1,8 +1,8 @@
 import { requestFeedback } from './ai-client.mjs';
 import { supplyChecks } from './capacity-plan.mjs?v=followup-demo-1';
-import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=work-mail-2';
+import { setWorkflowReview, recordDepartmentDecision, recordSupplyCheck, buyerChangeFeedback } from './proposal-workflow.mjs?v=dashboard-roles-1';
 import { loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
-import { choiceField, setInboxTasks, textField } from './work-inbox.mjs';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=dashboard-roles-1';
 
 const byId = (id) => document.getElementById(id);
 const section = byId('department-review-content');

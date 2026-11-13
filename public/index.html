@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Corevia 약속계획</title>
     <link rel="stylesheet" href="./intake.css">
-    <link rel="stylesheet" href="./workspace.css?v=work-mail-2">
-    <script type="module" src="./workspace.js?v=allocation-audit-1"></script>
-    <script type="module" src="./intake.mjs?v=work-mail-2"></script>
+    <link rel="stylesheet" href="./workspace.css?v=dashboard-roles-1">
+    <script type="module" src="./workspace.js?v=dashboard-roles-1"></script>
+    <script type="module" src="./intake.mjs?v=dashboard-roles-1"></script>
     <script type="module" src="./assistant.mjs?v=hands-on-demo-1"></script>
   </head>
   <body data-workspace="dashboard">
@@ -20,28 +20,7 @@
         <div class="section-heading"><h2 id="work-inbox-title">모의 받은편지함</h2>
           <form method="dialog"><button type="submit" id="work-inbox-close" class="secondary">닫기</button></form></div>
         <p>현재 공급안의 담당자와 승인 요청을 확인하세요. 검토 기록은 이 브라우저에 저장됩니다.</p>
-        <details id="work-mail-panel">
-          <summary>담당자 및 메일 알림 설정</summary>
-          <ol class="work-mail-flow" aria-label="알림이 이어지는 순서">
-            <li>영업 · 변경 조건 확인</li>
-            <li>물류 · 출고 확인</li>
-            <li>영업·생산·재무 · 검수</li>
-            <li>CEO·이사회 · 참여 결정</li>
-            <li>영업 · 모의 제출</li>
-          </ol>
-          <p>메일을 받을 역할만 등록하세요. 공급안이 바뀌면 새 버전에 해당하는 확인과 검수 요청이 열립니다.</p>
-          <form id="work-mail-settings">
-            <div id="work-mail-roles"></div>
-            <div id="work-mail-live-settings">
-              <label for="work-mail-key">자동 발송 키</label>
-              <input id="work-mail-key" type="password" name="dispatch-key" autocomplete="off" maxlength="256" placeholder="서버에 등록한 발송 키">
-              <p>키를 입력해 저장하면 열린 작업과 이후 작업을 메일로 알립니다. 메일의 링크는 작업을 배정한 브라우저에서 열 수 있습니다.</p>
-              <button id="work-mail-stop" type="button" class="secondary">자동 발송 끄기</button>
-            </div>
-            <button type="submit">담당자 저장 및 알림 적용</button>
-          </form>
-          <p id="work-mail-status" role="status"></p>
-        </details>
+        <p><a id="work-inbox-mail-settings" href="#work-mail-panel">대시보드에서 담당자와 이메일 설정 →</a></p>
         <p id="work-inbox-empty">지금 답할 요청이 없습니다.</p>
         <ul id="work-inbox-list" aria-label="답할 요청"></ul>
         <p id="work-inbox-request"></p>
@@ -51,6 +30,28 @@
         </form>
         <p id="work-inbox-notice" role="status"></p>
       </dialog>
+      <section id="work-mail-panel" data-view="dashboard" class="analysis-panel" aria-labelledby="work-mail-heading">
+        <h2 id="work-mail-heading" tabindex="-1">직책별 담당자와 메일 알림</h2>
+        <ol class="work-mail-flow" aria-label="알림이 이어지는 순서">
+          <li>영업 · 변경 조건 확인</li>
+          <li>물류 · 출고 확인</li>
+          <li>영업·생산·재무 · 검수</li>
+          <li>CEO·이사회 · 참여 결정</li>
+          <li>영업 · 모의 제출</li>
+        </ol>
+        <p>메일을 받을 직책에 이름과 이메일을 등록하세요. 해당 검수·승인 차례에 알림을 보냅니다.</p>
+        <form id="work-mail-settings">
+          <div id="work-mail-roles"></div>
+          <div id="work-mail-live-settings">
+            <label for="work-mail-key">자동 발송 키</label>
+            <input id="work-mail-key" type="password" name="dispatch-key" autocomplete="off" maxlength="256" placeholder="서버에 등록한 발송 키">
+            <p>서버에 허용된 이메일에 발송합니다. 키는 페이지를 다시 열 때 입력하세요.</p>
+            <button id="work-mail-stop" type="button" class="secondary">자동 발송 끄기</button>
+          </div>
+          <button type="submit">담당자 저장 및 알림 적용</button>
+        </form>
+        <p id="work-mail-status" role="status"></p>
+      </section>
       <section class="trial-launch" data-view="dashboard" aria-label="모의 입찰 테스트">
         <div class="guide-strip">
           <div><strong>모의 입찰 테스트</strong><p>실제 입력란에서 값을 바꾸고 계산·검수·회신을 직접 저장해 보세요.</p></div>

@@ -6,6 +6,7 @@ const byId = (id) => document.getElementById(id);
 const form = byId('work-mail-settings');
 const status = byId('work-mail-status');
 const roles = byId('work-mail-roles');
+const stop = byId('work-mail-stop');
 let assignments = loadState('work-mail-assignments') ?? {};
 let sent = new Set(loadState('work-mail-sent') ?? []);
 let scope = loadState('work-mail-scope');
@@ -112,7 +113,9 @@ for (const [key, label] of Object.entries(workRoles)) {
 }
 
 byId('work-mail-live-settings').hidden = experienceMode;
+stop.hidden = true;
 if (experienceMode) status.textContent = '체험에서는 지정한 담당자를 표시합니다. 실제 메일은 일반 검토에서 보냅니다.';
+else status.textContent = '자동 발송 꺼짐 · 담당자와 발송 키를 입력해 활성화하세요.';
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -143,6 +146,7 @@ form.addEventListener('submit', (event) => {
     dispatchKey = key;
     form.elements['dispatch-key'].value = '';
   }
+  stop.hidden = !dispatchKey;
   errors.clear();
   attempted.clear();
   status.textContent = dispatchKey ? '담당자를 저장했습니다. 열린 작업의 발송을 확인하고 있습니다.'
@@ -151,10 +155,12 @@ form.addEventListener('submit', (event) => {
   document.dispatchEvent(new Event('corevia:work-mail-settings'));
 });
 
-byId('work-mail-stop').addEventListener('click', () => {
+stop.addEventListener('click', () => {
   dispatchKey = '';
   settingsVersion++;
   generation++;
   form.elements['dispatch-key'].value = '';
+  stop.hidden = true;
+  form.elements['dispatch-key'].focus();
   status.textContent = '자동 발송을 껐습니다.';
 });

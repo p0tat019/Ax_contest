@@ -187,6 +187,10 @@ meter::-webkit-meter-optimum-value { background: #338d70; border-radius: 8px; }
 #work-mail-roles fieldset { min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: 8px; }
 #work-mail-roles label { display: block; }
 #work-mail-live-settings { margin: 12px 0; }
+#work-mail-panel { margin-bottom: 16px; scroll-margin-top: 16px; }
+#work-mail-heading { margin-top: 0; }
+#work-mail-key { max-width: 360px; }
+#work-mail-status { margin-bottom: 0; }
 .work-mail-flow { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-inline-start: 23px; margin: 12px 0; }
 .work-mail-flow li { padding-inline-end: 6px; }
 #assistant-panel #assistant-grounding { padding: 12px; background: var(--soft); font-size: 14px; }

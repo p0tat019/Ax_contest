@@ -1,7 +1,7 @@
 import { example, extractConditions, fields, pendingTasks } from './intake-rules.mjs';
 import { lookupEvidence } from './intake-lookup.mjs';
-import { setCapacityIntake } from './capacity.mjs?v=work-mail-2';
-import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=work-mail-2';
+import { setCapacityIntake } from './capacity.mjs?v=dashboard-roles-1';
+import { pendingBuyerChange, setWorkflowIntake } from './proposal-workflow.mjs?v=dashboard-roles-1';
 import { experienceMode, handsOnExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
 import { deliverySchedule } from './proposal-checks.mjs';
 

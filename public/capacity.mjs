@@ -3,10 +3,10 @@ import { verifyAllocation } from './capacity-verification.mjs';
 import { renderSupplyDecision } from './supply-decision-view.mjs';
 import { deliverySchedule } from './proposal-checks.mjs';
 import { scenarios } from './capacity-scenarios.mjs';
-import { setReviewPlan } from './department-review.mjs?v=work-mail-2';
-import { recordShippingReply } from './proposal-workflow.mjs?v=work-mail-2';
+import { setReviewPlan } from './department-review.mjs?v=dashboard-roles-1';
+import { recordShippingReply } from './proposal-workflow.mjs?v=dashboard-roles-1';
 import { changeExperience, loadState, saveState } from './workflow-storage.mjs?v=hands-on-demo-1';
-import { choiceField, setInboxTasks, textField } from './work-inbox.mjs';
+import { choiceField, setInboxTasks, textField } from './work-inbox.mjs?v=dashboard-roles-1';
 
 const byId = (id) => document.getElementById(id);
 const form = byId('capacity-form');

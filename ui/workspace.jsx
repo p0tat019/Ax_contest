@@ -17,7 +17,7 @@ const pages = [
 ];
 const aliases = { review: 'intake', reviewer: 'intake', result: 'intake', 'intake-request': 'intake', 'buyer-change-edit': 'intake', 'capacity-result': 'capacity', 'capacity-entry': 'capacity',
   'department-review': 'proposal', 'approval-evidence': 'proposal', 'workflow-history': 'proposal', 'proposal-document': 'proposal',
-  'buyer-reply-form': 'proposal', 'trial-heading': 'scenario' };
+  'buyer-reply-form': 'proposal', 'trial-heading': 'scenario', 'work-mail-panel': 'dashboard' };
 const byId = (id) => document.getElementById(id);
 const hash = () => window.location.hash.slice(1);
 const viewForHash = () => pages.find(([id, , anchor]) => id === hash() || anchor === hash())?.[0] ?? aliases[hash()] ?? 'dashboard';
